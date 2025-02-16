@@ -311,6 +311,14 @@ class ServerConsumer(AsyncWebsocketConsumer):
                 text=True
             )
 
+              # Bring the connection up
+            subprocess.run(
+                ["sudo", "reboot", "now"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
 
         # HANDLE REQUEST TO MAKE THE SYSTEM LIVE
         elif req.get('task') == 'live':
