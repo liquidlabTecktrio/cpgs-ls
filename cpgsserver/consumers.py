@@ -14,6 +14,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 import cv2
 import easyocr
 import socket
+import subprocess
 
 
 from cpgsserver.settings import  IS_PI_CAMERA_SOURCE, MAIN_SERVER_IP
@@ -275,7 +276,41 @@ class ServerConsumer(AsyncWebsocketConsumer):
                             self.coordinate_data.append(corners)
             with open('coordinates','wb') as coordinates:
                 pickle.dump(self.coordinate_data, coordinates)
+
+
+        elif req.get('task') == 'save_network_settings':
+            newnetworksettings = req.get('data')
+            print(newnetworksettings)
+
+            command = f"""
+            nmcli con modify $(nmcli -g UUID con show --active | head -n 1) \
+            ipv4.method manual \
+            ipv4.addresses {newnetworksettings['ipv4_address']}/24 \
+            ipv4.gateway {newnetworksettings['gateway_address']} \
+            ipv4.dns "8.8.8.8 8.8.4.4"
+            """
+
+            # Run the command with sudo
+            subprocess.run(["sudo", "bash", "-c", command], capture_output=True, text=True)
+            connection_name = "preconfigured"
+
         
+            # Bring the connection down
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "down", connection_name],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
+            # Bring the connection up
+            subprocess.run(
+                ["sudo", "nmcli", "connection", "up", connection_name],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
 
         # HANDLE REQUEST TO MAKE THE SYSTEM LIVE
         elif req.get('task') == 'live':
