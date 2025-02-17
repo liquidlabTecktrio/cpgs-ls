@@ -1,18 +1,20 @@
-# asgi.py
-
+# cpgsserver/asgi.py
 import os
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-from . import routing  # Adjust this import
+import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cpgsserver.settings')
+django.setup()
+
+from channels.auth import AuthMiddlewareStack
+from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from . import routing  # Import after django.setup()
 
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),  # Handles HTTP requests
+    "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            routing.websocket_urlpatterns  # Your WebSocket routing
+            routing.websocket_urlpatterns
         )
     ),
 })

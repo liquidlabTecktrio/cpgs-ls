@@ -15,10 +15,14 @@ import cv2
 import easyocr
 import socket
 import subprocess
-
-
+from cpgsapp.models import NetworkSettings
+from cpgsapp.serializers import NetworkSettingsSerializer
+from ultralytics import YOLO
 from cpgsserver.settings import  IS_PI_CAMERA_SOURCE, MAIN_SERVER_IP
+from asgiref.sync import sync_to_async
 
+# Load YOLO model once
+model = YOLO("license_plate_detector.pt")
 DEBUG = True
 
 
@@ -113,12 +117,47 @@ async def video_stream_for_calibrate():
 
 # GET ONE FRAME
 async def capture():
-
     if IS_PI_CAMERA_SOURCE:
         frame = cap.capture_array()
     else:
         ret, frame = cap.read()
     return frame
+
+@sync_to_async
+def get_network_settings():
+    currentNetworkSettings = NetworkSettings.objects.first()
+    print(currentNetworkSettings)
+    serialized_settings = NetworkSettingsSerializer(currentNetworkSettings)
+    return serialized_settings.data
+
+# GETLICENSE PLATE 
+def getNumberPlate(frame):
+    """Detects license plates in a frame and returns the cropped license plate image."""
+    results = model.predict(frame, conf=0.5)  
+    blank_image = np.zeros((100, 300, 3), dtype=np.uint8)  # Blank fallback image (300x100)
+    license_plate = blank_image  # Default if no plate is found
+
+    for result in results:
+        for box in result.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Get bounding box coordinates
+            cls = int(box.cls[0])  # Class ID
+            
+            if cls == 0:  # Ensure only license plates are detected
+                # Draw bounding box
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                cv2.putText(frame, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+                # Crop the detected license plate
+                license_plate = frame[y1:y2, x1:x2]
+
+                # Resize the license plate to a fixed size for better visualization
+                if license_plate.size > 0:
+                    license_plate = cv2.resize(license_plate, (300, 100), interpolation=cv2.INTER_LINEAR)
+
+    return license_plate  # Return only the cropped license plate
+
+
+
 
 # SCAN EACH SPACE/SLOT FOR VEHICLE DECTECTION
 async def scan_slots():
@@ -158,18 +197,26 @@ async def scan_slots():
             SlotCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
             pts = np.array(SlotCoordinates, np.int32)
             x, y, w, h = cv2.boundingRect(pts)
-            cropped_image = imgdilate[y:y+h, x:x+w]
+            dilated_cropped_image = imgdilate[y:y+h, x:x+w]
+
             image_original = await capture()
             cropped_image_original = image_original[y:y+h, x:x+w]
             frame_list_of_cropped_images.append(cropped_image_original)
+            # There are two option to dectect one is to wait for the license plate to dectect or pixel count
 
-            zero_count = cv2.countNonZero(cropped_image)
-            # print('scanning slots',zero_count)
+            # license plate dectection method
+            licenseNumber = getNumberPlate(cropped_image_original)
+            print(licenseNumber)
 
+            # zero count method
+            zero_count = cv2.countNonZero(dilated_cropped_image)
             if zero_count < TriggerVehicleAt:
                 VaccantSlots.append(slotIndex)
             else:
                 OccupiedSlots.append(slotIndex)
+
+
+
         return True ,VaccantSlots, OccupiedSlots, poslist , frame_list_of_cropped_images
     
 # CONSUMER FOR HANDLING ALL REQUESTS FROM CLIENT
@@ -290,6 +337,8 @@ class ServerConsumer(AsyncWebsocketConsumer):
             ipv4.dns "8.8.8.8 8.8.4.4"
             """
 
+            NetworkSettings.objects.update(ipv4_address=newnetworksettings['ipv4_address'], gateway_address=newnetworksettings['gateway_address'])
+
             # Run the command with sudo
             subprocess.run(["sudo", "bash", "-c", command], capture_output=True, text=True)
             connection_name = "preconfigured"
@@ -318,6 +367,13 @@ class ServerConsumer(AsyncWebsocketConsumer):
                 capture_output=True,
                 text=True
             )
+
+        elif req.get('task') == 'get_network_settings':
+            currentNetworkSettings = await get_network_settings()
+            print(currentNetworkSettings)
+            await self.send(text_data = json.dumps(currentNetworkSettings))
+
+
 
 
         # HANDLE REQUEST TO MAKE THE SYSTEM LIVE
