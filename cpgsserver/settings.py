@@ -132,6 +132,7 @@ STATIC_ROOT = 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 MAIN_SERVER_IP = 'https://cpgs.liquidlab.in/cpgs'
+
 # MAIN_SERVER_PORT = 8000
 # INPUT CAMERA SOURCE
-IS_PI_CAMERA_SOURCE = False
+IS_PI_CAMERA_SOURCE = True
