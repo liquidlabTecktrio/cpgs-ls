@@ -24,7 +24,11 @@ from asgiref.sync import sync_to_async
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
 DEBUG = True
-
+licenseloopcount = 1
+maxconfidence = 0
+lpo = ""
+confidence = 0
+lp = ""
 
 if IS_PI_CAMERA_SOURCE:
     from picamera2 import Picamera2
@@ -52,16 +56,7 @@ def network_handler(timestamp = None, space_id = None, status = None, licenseNum
     slotData = {
     "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
 }
-        # "timestamp":,
-        # "slot":slot,
-        # "status":status,
-        # "licence_number":licenseNumber
-    
-
-    # bytesToSend  = str(slotData).encode('utf-8')
-    # serverSocketAddress   = (MAIN_SERVER_IP, MAIN_SERVER_PORT)
-    # bufferSize          = 1024
-    # print(self.slotData)
+        
     try:
         url = MAIN_SERVER_IP
         requests.post(url, json=slotData)
@@ -89,29 +84,25 @@ async def video_stream():
 
 # VIDEO STREAMER FOR CALIBRATION
 async def video_stream_for_calibrate():
-    # if not cap.isOpened():
-    #     if DEBUG:print("Cannot open camera")
-    #     return
     while True:
-        # await asyncio.sleep(.1)
-        # frame = picam2.capture_array()
-        # frame = cap.read()
         if IS_PI_CAMERA_SOURCE:
             frame = cap.capture_array()
         else:
             ret, frame = cap.read()
-        # if not ret:
-        #     if DEBUG:print("Can't receive frame (stream end?). Exiting ...")
-
-        with open('coordinates','rb')as data:
-            for slot_coordinates in pickle.load(data):
-                    for index in range (0,len(slot_coordinates)-1):
-                        cv2.line(frame, slot_coordinates[index], slot_coordinates[index+1], (0, 255, 0), 2)  # Draw line
+        with open('coordinates.txt','rb')as data:
+            for space_coordinates in pickle.load(data):
+                    print("space - ",space_coordinates)
+                    for index in range (0,len(space_coordinates)-1):
+                        # print(int(space_coordinates[index][0]), "----------")
+                        x1 = int(space_coordinates[index][0])
+                        y1 = int(space_coordinates[index][1])
+                        x2 = int(space_coordinates[index+1][0])
+                        y2 = int(space_coordinates[index+1][1])    
+                        cv2.line(frame,(x1,y1),(x2,y2), (0, 255, 0), 2)  # Draw line
         
         ret, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
         encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
-            
         readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
         yield readyToSendFrame
 
@@ -151,11 +142,46 @@ def getNumberPlate(frame):
                 license_plate = frame[y1:y2, x1:x2]
 
                 # Resize the license plate to a fixed size for better visualization
-                if license_plate.size > 0:
-                    license_plate = cv2.resize(license_plate, (300, 100), interpolation=cv2.INTER_LINEAR)
+                # if license_plate.size > 0:
+                #     license_plate = cv2.resize(license_plate, (300, 100), interpolation=cv2.INTER_LINEAR)
 
     return license_plate  # Return only the cropped license plate
 
+
+def getLicensePlate(space_view, slot_index):
+        print('scanning space ',slot_index)
+        lpframe=getNumberPlate(space_view)
+        _, buffer = cv2.imencode('.jpg', lpframe)
+        image_bytes = buffer.tobytes() 
+
+        with open('1.jpg','wb') as file:
+            file.write(image_bytes)
+
+        reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
+        result = reader.readtext(lpframe)
+        data = [(entry[1],entry[2]) for entry in result]
+        totalstring  = len(data)
+        # combained string and confidence
+        global lp, confidence, lpo, licenseloopcount
+        for tuple in data:
+            lp = lp + tuple[0]
+        #     print(lp)
+            confidence  = confidence + tuple[1]
+        if totalstring > 0:
+            average_confidence = confidence/totalstring
+            if licenseloopcount <=5:
+                licenseloopcount = licenseloopcount + 1
+                if maxconfidence < average_confidence:
+                    maxconfidence = average_confidence
+                    lpo = lp
+            # print(licenseloopcount, "licenseloopcount")
+            if licenseloopcount == 5:
+                print("License plate of space with index",slot_index, "is ",lpo,"with confidence ", maxconfidence)
+                maxconfidence = 0
+                licenseloopcount = 0
+
+        lp = ""
+        confidence = 0
 
 
 
@@ -164,60 +190,82 @@ async def scan_slots():
         '''
         SCAN the parking slot FOR VEHICLE
         '''
-        TriggerVehicleAt = 50
-        frameInGray = cv2.cvtColor(await capture(), cv2.COLOR_BGR2GRAY)
-        frameInGrayAndBlur = cv2.GaussianBlur(frameInGray, (3, 3), 2)
-        with open("config.json","rb") as configurations:
-                config = json.load(configurations)
-                configuration_data = {
-                    "CameraFilterThresh" : config["threshold"],
-                    "serverIP" :config["server_ip"],
-                    "serverPort" : config["server_port"],
-                    "CameraFilterMaximumThresh" : 255,
-                    "CameraFilterThreshOnCalibrate" : config["threshold"],
-                    "CameraFilterMaximumThreshOnCalibrate" : 255,
-                    "BoostThreshAT":2,
-                }
-        _,ThreshHoldedFrame  = cv2.threshold(frameInGrayAndBlur,
-                                                  configuration_data["CameraFilterThreshOnCalibrate"], 
-                                                  configuration_data["CameraFilterMaximumThreshOnCalibrate"], 
-                                                  cv2.THRESH_BINARY_INV)
+        # TriggerVehicleAt = 50
+        global maxconfidence, thread
+        # frameInGray = cv2.cvtColor(await capture(), cv2.COLOR_BGR2GRAY)
+        # frameInGrayAndBlur = cv2.GaussianBlur(frameInGray, (3, 3), 2)
+        # with open("config.json","rb") as configurations:
+        #         config = json.load(configurations)
+        #         configuration_data = {
+        #             "CameraFilterThresh" : config["threshold"],
+        #             "serverIP" :config["server_ip"],
+        #             "serverPort" : config["server_port"],
+        #             "CameraFilterMaximumThresh" : 255,
+        #             "CameraFilterThreshOnCalibrate" : config["threshold"],
+        #             "CameraFilterMaximumThreshOnCalibrate" : 255,
+        #             "BoostThreshAT":2,
+        #         }
+        # _,ThreshHoldedFrame  = cv2.threshold(frameInGrayAndBlur,
+        #                                           configuration_data["CameraFilterThreshOnCalibrate"], 
+        #                                           configuration_data["CameraFilterMaximumThreshOnCalibrate"], 
+        #                                           cv2.THRESH_BINARY_INV)
         # cv2.imshow("thresh",ThreshHoldedFrame)
-        imgmedian = cv2.medianBlur(ThreshHoldedFrame, 5)
-        kernal = np.ones((3, 3), np.uint8)
-        imgdilate = cv2.dilate(imgmedian, kernel=kernal, iterations=configuration_data["BoostThreshAT"])
+        # imgmedian = cv2.medianBlur(ThreshHoldedFrame, 5)
+        # kernal = np.ones((3, 3), np.uint8)
+        # imgdilate = cv2.dilate(imgmedian, kernel=kernal, iterations=configuration_data["BoostThreshAT"])
         VaccantSlots = []
         OccupiedSlots = []
         poslist =[]
         await asyncio.sleep(.1)
-        with open('coordinates','rb')as data:
+        with open('coordinates.txt','rb')as data:
             poslist = pickle.load(data)
-        frame_list_of_cropped_images = []
+        space_view_list = []
         for slotIndex, pos in enumerate(poslist):
             SlotCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
             pts = np.array(SlotCoordinates, np.int32)
             x, y, w, h = cv2.boundingRect(pts)
-            dilated_cropped_image = imgdilate[y:y+h, x:x+w]
+            # image_original = await capture()
 
-            image_original = await capture()
-            cropped_image_original = image_original[y:y+h, x:x+w]
-            frame_list_of_cropped_images.append(cropped_image_original)
+            # dilated_cropped_image = image_original[y:y+h, x:x+w]
+
+            camera_view = await capture()
+            space_view = camera_view[y:y+h, x:x+w]
+            space_view_list.append(space_view)
+            # frame_list_of_cropped_images.append(cropped_image_original)
             # There are two option to dectect one is to wait for the license plate to dectect or pixel count
 
             # license plate dectection method
-            licenseNumber = getNumberPlate(cropped_image_original)
-            print(licenseNumber)
+            # licenseNumber = getNumberPlate(cropped_image_original)
+            # print(licenseNumber)
 
             # zero count method
-            zero_count = cv2.countNonZero(dilated_cropped_image)
-            if zero_count < TriggerVehicleAt:
-                VaccantSlots.append(slotIndex)
-            else:
-                OccupiedSlots.append(slotIndex)
+            # zero_count = cv2.countNonZero(dilated_cropped_image)
+            # image = np.expand_dims(dilated_cropped_image, axis=0)  # Ensure batch dimension
+            # image = image[..., ::-1]  # Convert B
+            stop_event = threading.Event()
+            stop_event.set()
+            thread = threading.Thread(target=getLicensePlate, args=(space_view,slotIndex,))
+            thread.start()
+           
 
 
 
-        return True ,VaccantSlots, OccupiedSlots, poslist , frame_list_of_cropped_images
+
+            # # Method 2: Using join() (Removes all whitespace)
+            # text_no_spaces = "".join(text.split())
+
+            # if cv2.waitKey(1) & 0xFF == ord("q"):
+            #                 break
+            
+
+            # if zero_count < TriggerVehicleAt:
+            #     VaccantSlots.append(slotIndex)
+            # else:
+            #     OccupiedSlots.append(slotIndex)
+
+
+
+        return True ,VaccantSlots, OccupiedSlots, poslist , space_view_list
     
 # CONSUMER FOR HANDLING ALL REQUESTS FROM CLIENT
 class ServerConsumer(AsyncWebsocketConsumer):
@@ -261,20 +309,26 @@ class ServerConsumer(AsyncWebsocketConsumer):
 
         # HANDLE REQUEST TO UPDATE THE SPACE COORDINATES IN MANUAL CALIBRATION FRAMES
         elif req.get("task") == 'update_calibrating_frame':
+
                 x = req.get('x')
                 y = req.get('y')
                 self.points.append((x, y))
+                
                 if len(self.points)%5 == 0:
                     self.coordinates.append(self.points)
-                    with open('coordinates','wb') as coordinate:
+                    with open('coordinates.txt','wb') as coordinate:
                         pickle.dump(self.coordinates, coordinate)
                     self.points = []
 
         # HANDLE REQUEST TO RESET THE SPACE COORDINATES IN CPGS DB
         elif req.get("task") == 'reset_calibrating_frame':
             self.coordinates = []
-            with open('coordinates','wb') as coordinate:
+            with open('coordinates.txt','wb') as coordinate:
                         pickle.dump(self.coordinates, coordinate)
+
+        elif req.get("task") == 'kill':
+            thread.join() 
+            print("killed")
 
         # HANDLE REQUEST FOR AUTOCALIBRATION 
         elif req.get('task') == 'auto_calibrate':
@@ -321,7 +375,7 @@ class ServerConsumer(AsyncWebsocketConsumer):
                         angle = math.degrees(math.acos(cosine_angle))
                         if angle >70 and angle <110:
                             self.coordinate_data.append(corners)
-            with open('coordinates','wb') as coordinates:
+            with open('coordinates.txt','wb') as coordinates:
                 pickle.dump(self.coordinate_data, coordinates)
 
 
@@ -378,6 +432,7 @@ class ServerConsumer(AsyncWebsocketConsumer):
 
         # HANDLE REQUEST TO MAKE THE SYSTEM LIVE
         elif req.get('task') == 'live':
+            # scan slog funcion
             _, CurrentAvailableSlots , OccupiedSlots, poslist, frame_list_of_cropped_images = await scan_slots()
             lastAvailableSlots = CurrentAvailableSlots
             while True:
@@ -390,7 +445,9 @@ class ServerConsumer(AsyncWebsocketConsumer):
                     encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
                     frame = f"data:image/jpeg;base64,{encoded_frame}"
                     encoded_spaces.append(frame)
+                print('sending space frames to frontend')
                 await self.send(json.dumps({'fnames': encoded_spaces}))
+
                 if len(CurrentAvailableSlots) != len(lastAvailableSlots):
                     # time.sleep(1)
                     _, CurrentAvailableSlots , OccupiedSlots, poslist, frame_list_of_cropped_images = await scan_slots()
