@@ -89,6 +89,7 @@ async def video_stream_for_calibrate():
             frame = cap.capture_array()
         else:
             ret, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         with open('coordinates.txt','rb')as data:
             for space_coordinates in pickle.load(data):
                     print("space - ",space_coordinates)
