@@ -3,8 +3,20 @@ import subprocess
 import cv2
 from django.http import StreamingHttpResponse, JsonResponse
 from django.shortcuts import render,HttpResponse
-
+from cpgsserver.consumers import scan_spaces
 # from rest_framework.response import Response
+async def initiate(req):     
+    Loop = True
+    while Loop:
+        with open("config.json","rb") as configurations:
+            config = json.load(configurations)
+            mode = config['mode']
+            if mode != 'live':
+                Loop = False
+            else:
+                await scan_spaces()
+    print('ready')
+    return HttpResponse("initiated")
 
 # Create your views here.
 def change_hostname(new_hostname):

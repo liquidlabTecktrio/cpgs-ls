@@ -25,6 +25,7 @@ urlpatterns = [
     path('update_threshold',views.update_threshold),
     path('get_threshold',views.get_threshold),
     path('get_slot_details',views.get_slot_details),
+    path('initiate',views.initiate),
     
     # path('', TemplateView.as_view(template_name = 'index.html')),
     path('',TemplateView.as_view(template_name = 'index.html'))

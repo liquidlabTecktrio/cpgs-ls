@@ -1,19 +1,16 @@
 
 import asyncio
 import base64
-import datetime
 import json
 import math
 import pickle
-import threading
-import time
+import django
 import base64
 import numpy as np
-import requests
+from  multiprocessing import Pool
 from channels.generic.websocket import AsyncWebsocketConsumer
 import cv2
 import easyocr
-import socket
 import subprocess
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
@@ -24,24 +21,13 @@ from asgiref.sync import sync_to_async
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
 DEBUG = True
-licenseloopcount = 1
-maxconfidence = 0
-lpo = ""
-confidence = 0
-lp = ""
+VACCENTSPACES = 0
+TOTALSPACES = 0
 
-if IS_PI_CAMERA_SOURCE:
-    from picamera2 import Picamera2
-    cap = Picamera2()
-    # print(cap.list_controls()) 
-    # config = cap.create_preview_configuration()
-    # config['awb_mode'] = 'fluorescent' 
-    # cap.configure(config)
-    cap.start()
-else:
-    cap = cv2.VideoCapture(0) 
-   
-def network_handler(timestamp = None, space_id = None, status = None, licenseNumber = None):
+
+def network_handler():
+    spaceInfo = SpaceInfo()
+    timestamp = ""
     device_id = 20001
     mac_addr = "SDF34:34DFS:L#43:DF"
     ip_address = "192.168.1.25"
@@ -55,43 +41,34 @@ def network_handler(timestamp = None, space_id = None, status = None, licenseNum
     # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
     slotData = {
     "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-}
+    }
         
-    try:
-        url = MAIN_SERVER_IP
-        requests.post(url, json=slotData)
-        # UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        # UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
-        print('send Successfuly')
-    except Exception as e:
-        print(e)
+    # try:
+    #     url = MAIN_SERVER_IP
+    #     requests.post(url, json=slotData)
+    #     # UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    #     # UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
+    print('Updated to MS')
+    # except Exception as e:
+    #     print(e)
 
 # VIDEO STREMER
 async def video_stream():
   
     while True:
-        
-        if IS_PI_CAMERA_SOURCE:
-            frame = cap.capture_array()
-        else:
-            ret, frame = cap.read()
-
+        frame  = capture('run')
         ret, buffer = cv2.imencode('.jpg', frame)
+        frame = cv2.flip(frame, 1)
         frame_bytes = buffer.tobytes()
         encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
         yield f"data:image/jpeg;base64,{encoded_frame}"
-    cap.release()
 
 # VIDEO STREAMER FOR CALIBRATION
 async def video_stream_for_calibrate():
     while True:
-        if IS_PI_CAMERA_SOURCE:
-            frame = cap.capture_array()
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        else:
-            ret, frame = cap.read()
-        with open('coordinates.txt','rb')as data:
-            for space_coordinates in pickle.load(data):
+        frame  = await capture('run')
+        with open('coordinates.txt','r')as data:
+            for space_coordinates in json.load(data):
                     print("space - ",space_coordinates)
                     for index in range (0,len(space_coordinates)-1):
                         # print(int(space_coordinates[index][0]), "----------")
@@ -108,12 +85,27 @@ async def video_stream_for_calibrate():
         yield readyToSendFrame
 
 # GET ONE FRAME
-async def capture():
-    if IS_PI_CAMERA_SOURCE:
-        frame = cap.capture_array()
-    else:
-        ret, frame = cap.read()
-    return frame
+async def capture(task):
+    global cap
+    if (task == "run"):
+        if IS_PI_CAMERA_SOURCE:
+            from picamera2 import Picamera2
+            cap = Picamera2()
+            cap.start()
+            frame = cap.capture_array()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        else:
+            cap = cv2.VideoCapture(0) 
+            ret, frame = cap.read()
+        frame  = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
+        return frame
+
+    elif (task == 'stop'):
+        if IS_PI_CAMERA_SOURCE:
+          cap.close()
+        else:
+          cap.release()
+          
 
 @sync_to_async
 def get_network_settings():
@@ -122,151 +114,251 @@ def get_network_settings():
     serialized_settings = NetworkSettingsSerializer(currentNetworkSettings)
     return serialized_settings.data
 
-# GETLICENSE PLATE 
-def getNumberPlate(frame):
+
+def saveFile(filename, image):
+        _, buffer = cv2.imencode('.jpg', image)
+        image_bytes = buffer.tobytes() 
+
+        with open(f'{filename}.jpg','wb') as file:
+            file.write(image_bytes)
+
+def SpaceInfo():
+    with open('spaces.txt','r') as spaces:
+        SPACES = json.load(spaces)
+    return SPACES
+
+def SpaceMonitoringInfo():
+    with open('space_views.txt','r') as space_views:
+        SPACES = json.load(space_views)
+    return SPACES
+
+def image_to_base64(frame):
+    try:
+        # Ensure frame is C-contiguous
+        frame_contiguous = np.ascontiguousarray(frame)
+        success, encoded_img = cv2.imencode('.jpg', frame_contiguous)
+        if not success:
+            print("Failed to encode frame to JPEG")
+            return None
+        
+        # Convert NumPy array to bytes
+        image_bytes = encoded_img.tobytes()
+        
+        # Convert bytes to base64 string
+        base64_string = base64.b64encode(image_bytes).decode('utf-8')
+        data_url = f"data:image/jpeg;base64,{base64_string}"
+        
+        return data_url
+    except Exception as e:
+        print(f"Error converting frame to base64: {str(e)}")
+        return None
+
+def pilot_handler():
+    occupiedSpaceList = []
+    for space in SpaceInfo():
+        if space['spaceStatus']=='occupied':
+            occupiedSpaceList.append(space)
+    NoOfOccupiedSpaces = len(occupiedSpaceList)
+    AvailableVaccantSpaces = TOTALSPACES - NoOfOccupiedSpaces
+    if AvailableVaccantSpaces == 0:
+        print('Setting Pilot to Red')
+    else:
+        print('Setting pilot to Green')
+    return 
+
+
+def DectectLicensePlate(frame):
     """Detects license plates in a frame and returns the cropped license plate image."""
-    results = model.predict(frame, conf=0.5)  
-    blank_image = np.zeros((100, 300, 3), dtype=np.uint8)  # Blank fallback image (300x100)
-    license_plate = blank_image  # Default if no plate is found
+    results = model.predict(frame, conf=0.5)
+    license_plate = None 
 
     for result in results:
         for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Get bounding box coordinates
-            cls = int(box.cls[0])  # Class ID
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            cls = int(box.cls[0])
             
-            if cls == 0:  # Ensure only license plates are detected
-                # Draw bounding box
+            if cls == 0: 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
                 cv2.putText(frame, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-                # Crop the detected license plate
                 license_plate = frame[y1:y2, x1:x2]
+    return license_plate
 
-                # Resize the license plate to a fixed size for better visualization
-                # if license_plate.size > 0:
-                #     license_plate = cv2.resize(license_plate, (300, 100), interpolation=cv2.INTER_LINEAR)
+def DectectLicensePlateWithSpaceView(space_view):
+    """Detects license plates in a frame and returns the cropped license plate image."""
+    results = model.predict(space_view, conf=0.5)
+    license_plate = None 
 
-    return license_plate  # Return only the cropped license plate
+    for result in results:
+        for box in result.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            cls = int(box.cls[0])
+            
+            if cls == 0: 
+                cv2.rectangle(space_view, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                cv2.putText(space_view, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                license_plate = space_view[y1:y2, x1:x2]
+
+    return space_view, license_plate
 
 
-def getLicensePlate(space_view, slot_index):
-        print('scanning space ',slot_index)
-        lpframe=getNumberPlate(space_view)
-        _, buffer = cv2.imencode('.jpg', lpframe)
-        image_bytes = buffer.tobytes() 
-
-        with open('1.jpg','wb') as file:
-            file.write(image_bytes)
-
+def RecognizeLicensePlate(licensePlate):
+        
         reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
-        result = reader.readtext(lpframe)
-        data = [(entry[1],entry[2]) for entry in result]
-        totalstring  = len(data)
-        # combained string and confidence
-        global lp, confidence, lpo, licenseloopcount
-        for tuple in data:
-            lp = lp + tuple[0]
-        #     print(lp)
-            confidence  = confidence + tuple[1]
-        if totalstring > 0:
-            average_confidence = confidence/totalstring
-            if licenseloopcount <=5:
-                licenseloopcount = licenseloopcount + 1
-                if maxconfidence < average_confidence:
-                    maxconfidence = average_confidence
-                    lpo = lp
-            # print(licenseloopcount, "licenseloopcount")
-            if licenseloopcount == 5:
-                print("License plate of space with index",slot_index, "is ",lpo,"with confidence ", maxconfidence)
-                maxconfidence = 0
-                licenseloopcount = 0
+        scanRound = 0
+        maxConfidence = 0
+        licenseNumberWithMoreConfidence = ""
 
-        lp = ""
-        confidence = 0
+        if licensePlate is not None:
+            while scanRound < 5: 
+                scanRound  = scanRound + 1
+                result = reader.readtext(licensePlate)
+                result = [(entry[1],entry[2]) for entry in result][0]
+                licenseNumber, confidence = result
+                if confidence > maxConfidence:
+                    maxConfidence = confidence
+                    licenseNumberWithMoreConfidence = licenseNumber
+            print('Captured', licenseNumberWithMoreConfidence,"with confidence", confidence)
+            return licenseNumberWithMoreConfidence
+        
+        return licenseNumberWithMoreConfidence
+        
 
+def getLicensePlate(spaceDetails):
+        spaceID, x, y, w, h = spaceDetails
+        print(f'Scanning spaceID {spaceID}')
+        camera_view = cv2.imread("camera_view.jpg")  
+        space_view = camera_view[y:y+h, x:x+w]
+        licensePlate=DectectLicensePlate(space_view)
+
+        SPACES = SpaceInfo()
+        if licensePlate is not None:
+            licenseNumber = RecognizeLicensePlate(licensePlate)
+            for space in SPACES:
+                if space['spaceID'] == spaceID:
+                    space['licenseNumber'] = licenseNumber
+                    space['spaceStatus'] = 'occupied'
+            
+            
+            with open('spaces.txt', 'w') as spaces_file:
+                json.dump(SPACES, spaces_file, indent=4)
+
+            saveFile(spaceID, licensePlate)
+
+
+def getSpaceMonitors(spaceDetails):
+
+        spaceID, x, y, w, h = spaceDetails
+        print(f'Scanning spaceID {spaceID}')
+        camera_view = cv2.imread("camera_view.jpg")  
+        space_view = camera_view[y:y+h, x:x+w]
+        licensePlateinSpace, licensePlate = DectectLicensePlateWithSpaceView(space_view)
+        licenseNumber = RecognizeLicensePlate(licensePlate)
+        # print("license Number is ",licenseNumber)
+
+        saveFile(f'spaceViewOfSpaceID{spaceID}',licensePlateinSpace)
+        licensePlateinSpaceInBase64 = image_to_base64(licensePlateinSpace)
+        SPACES = SpaceMonitoringInfo()
+
+        for space in SPACES:
+            if space['spaceID'] == spaceID:
+                space['spaceFrame'] = licensePlateinSpaceInBase64
+                space['licenseNumber'] = licenseNumber
+        
+            
+        with open('space_views.txt', 'w') as space_views:
+            json.dump(SPACES, space_views, indent=4)
+        return
+
+
+
+async def monitor_spaces():
+    '''
+    SCAN the parking slot FOR VEHICLE
+    '''             
+    poslist =[]
+    await asyncio.sleep(.1)
+    with open('coordinates.txt','r')as data:
+        poslist = json.load(data)
+    
+    global TOTALSPACES, SPACES
+    SPACES = []
+    TOTALSPACES = len(poslist)
+    print('Found ',TOTALSPACES , "space")
+    for spaceID in range(TOTALSPACES):
+        obj = {
+            'spaceID':spaceID,
+            'spaceStatus':'vaccant',
+            'spaceFrame':'',
+            'licenseNumber':""
+        }
+        SPACES.append(obj)
+    
+    
+    with open('space_views.txt', 'w') as space_views:
+        json.dump(SPACES, space_views,indent=4)
+
+    camera_view = await capture('run')
+    saveFile('camera_view',camera_view)
+    await capture('stop')
+
+    space_coordinate_list = []
+
+    for spaceID, pos in enumerate(poslist):
+        SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
+        pts = np.array(SpaceCoordinates, np.int32)
+        x, y, w, h = cv2.boundingRect(pts)
+        space_coordinate_list.append((spaceID,x,y,w,h))
+
+    if len(space_coordinate_list) > 0:
+        with Pool(initializer=django.setup) as pool: 
+            pool.map(getSpaceMonitors, space_coordinate_list)
 
 
 # SCAN EACH SPACE/SLOT FOR VEHICLE DECTECTION
-async def scan_slots():
+async def scan_spaces():
         '''
         SCAN the parking slot FOR VEHICLE
-        '''
-        # TriggerVehicleAt = 50
-        global maxconfidence, thread
-        # frameInGray = cv2.cvtColor(await capture(), cv2.COLOR_BGR2GRAY)
-        # frameInGrayAndBlur = cv2.GaussianBlur(frameInGray, (3, 3), 2)
-        # with open("config.json","rb") as configurations:
-        #         config = json.load(configurations)
-        #         configuration_data = {
-        #             "CameraFilterThresh" : config["threshold"],
-        #             "serverIP" :config["server_ip"],
-        #             "serverPort" : config["server_port"],
-        #             "CameraFilterMaximumThresh" : 255,
-        #             "CameraFilterThreshOnCalibrate" : config["threshold"],
-        #             "CameraFilterMaximumThreshOnCalibrate" : 255,
-        #             "BoostThreshAT":2,
-        #         }
-        # _,ThreshHoldedFrame  = cv2.threshold(frameInGrayAndBlur,
-        #                                           configuration_data["CameraFilterThreshOnCalibrate"], 
-        #                                           configuration_data["CameraFilterMaximumThreshOnCalibrate"], 
-        #                                           cv2.THRESH_BINARY_INV)
-        # cv2.imshow("thresh",ThreshHoldedFrame)
-        # imgmedian = cv2.medianBlur(ThreshHoldedFrame, 5)
-        # kernal = np.ones((3, 3), np.uint8)
-        # imgdilate = cv2.dilate(imgmedian, kernel=kernal, iterations=configuration_data["BoostThreshAT"])
-        VaccantSlots = []
-        OccupiedSlots = []
+        '''             
         poslist =[]
         await asyncio.sleep(.1)
-        with open('coordinates.txt','rb')as data:
-            poslist = pickle.load(data)
-        space_view_list = []
-        for slotIndex, pos in enumerate(poslist):
-            SlotCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
-            pts = np.array(SlotCoordinates, np.int32)
+        with open('coordinates.txt','r')as data:
+            poslist = json.load(data)
+        
+        global TOTALSPACES, SPACES
+        SPACES = []
+        TOTALSPACES = len(poslist)
+        print('Found ',TOTALSPACES , "space")
+        for spaceID in range(TOTALSPACES):
+            obj = {
+                'spaceID':spaceID,
+                'spaceStatus':'vaccant',
+                'licenseNumber':''
+            }
+            SPACES.append(obj)
+        
+        
+        with open('spaces.txt', 'w') as spaces_file:
+            json.dump(SPACES, spaces_file,indent=4)
+
+        camera_view = await capture('run')
+        saveFile('camera_view',camera_view)
+        await capture('stop')
+
+        space_coordinate_list = []
+
+        for spaceID, pos in enumerate(poslist):
+            SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
+            pts = np.array(SpaceCoordinates, np.int32)
             x, y, w, h = cv2.boundingRect(pts)
-            # image_original = await capture()
+            space_coordinate_list.append((spaceID,x,y,w,h))
 
-            # dilated_cropped_image = image_original[y:y+h, x:x+w]
+        if len(space_coordinate_list) > 0:
+            with Pool(initializer=django.setup) as pool: 
+                pool.map(getLicensePlate, space_coordinate_list)
 
-            camera_view = await capture()
-            space_view = camera_view[y:y+h, x:x+w]
-            space_view_list.append(space_view)
-            # frame_list_of_cropped_images.append(cropped_image_original)
-            # There are two option to dectect one is to wait for the license plate to dectect or pixel count
+        pilot_handler()
+        network_handler()
 
-            # license plate dectection method
-            # licenseNumber = getNumberPlate(cropped_image_original)
-            # print(licenseNumber)
-
-            # zero count method
-            # zero_count = cv2.countNonZero(dilated_cropped_image)
-            # image = np.expand_dims(dilated_cropped_image, axis=0)  # Ensure batch dimension
-            # image = image[..., ::-1]  # Convert B
-            stop_event = threading.Event()
-            stop_event.set()
-            thread = threading.Thread(target=getLicensePlate, args=(space_view,slotIndex,))
-            thread.start()
-           
-
-
-
-
-            # # Method 2: Using join() (Removes all whitespace)
-            # text_no_spaces = "".join(text.split())
-
-            # if cv2.waitKey(1) & 0xFF == ord("q"):
-            #                 break
-            
-
-            # if zero_count < TriggerVehicleAt:
-            #     VaccantSlots.append(slotIndex)
-            # else:
-            #     OccupiedSlots.append(slotIndex)
-
-
-
-        return True ,VaccantSlots, OccupiedSlots, poslist , space_view_list
     
 # CONSUMER FOR HANDLING ALL REQUESTS FROM CLIENT
 class ServerConsumer(AsyncWebsocketConsumer):
@@ -299,14 +391,38 @@ class ServerConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(.1)
 
         # HANDLE LIVESTREAM STOP REQUESTS
-        elif req.get("task") == 'stop':
-            self.stream_task.cancel()
+        elif req.get("task") == 'stopstream':
+            if self.streaming:
+                self.streaming = False
+                if self.stream_task:
+                    self.stream_task.cancel()
+                    try:
+                        await self.stream_task
+                    except asyncio.CancelledError:
+                        print("Stream canceled")
+            await capture('stop')
 
         # HANDLE REQUEST FOR THE MANUAL CALIBRATION FRAMES
         elif req.get("task") == 'get_calibrating_frame':
-            self.streaming = True
-            self.stream_task = asyncio.create_task(self._stream_calibration_frames())
-            await asyncio.sleep(.1)
+            frame  = await capture('run')
+            with open('coordinates.txt','r')as data:
+                for space_coordinates in json.load(data):
+                        print("space - ",space_coordinates)
+                        for index in range (0,len(space_coordinates)-1):
+                            # print(int(space_coordinates[index][0]), "----------")
+                            x1 = int(space_coordinates[index][0])
+                            y1 = int(space_coordinates[index][1])
+                            x2 = int(space_coordinates[index+1][0])
+                            y2 = int(space_coordinates[index+1][1])    
+                            cv2.line(frame,(x1,y1),(x2,y2), (0, 255, 0), 2)  # Draw line
+            
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame_bytes = buffer.tobytes()
+            encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
+            readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
+
+            data = {'frame':readyToSendFrame,'task':'calibrate_stream'}
+            await self.send(json.dumps(data))
 
         # HANDLE REQUEST TO UPDATE THE SPACE COORDINATES IN MANUAL CALIBRATION FRAMES
         elif req.get("task") == 'update_calibrating_frame':
@@ -317,19 +433,25 @@ class ServerConsumer(AsyncWebsocketConsumer):
                 
                 if len(self.points)%5 == 0:
                     self.coordinates.append(self.points)
-                    with open('coordinates.txt','wb') as coordinate:
-                        pickle.dump(self.coordinates, coordinate)
+                    with open('coordinates.txt','w') as coordinate:
+                        json.dump(self.coordinates, coordinate, indent=4)
                     self.points = []
 
         # HANDLE REQUEST TO RESET THE SPACE COORDINATES IN CPGS DB
         elif req.get("task") == 'reset_calibrating_frame':
             self.coordinates = []
-            with open('coordinates.txt','wb') as coordinate:
-                        pickle.dump(self.coordinates, coordinate)
+            with open('coordinates.txt','w') as coordinate:
+                json.dump(self.coordinates, coordinate, indent=4)
 
-        elif req.get("task") == 'kill':
-            thread.join() 
-            print("killed")
+            frame = await capture('run')
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = await capture('stop')
+            frame_bytes = buffer.tobytes()
+            encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
+            readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
+
+            data = {'frame':readyToSendFrame,'task':'calibrate_stream'}
+            await self.send(json.dumps(data))
 
         # HANDLE REQUEST FOR AUTOCALIBRATION 
         elif req.get('task') == 'auto_calibrate':
@@ -376,8 +498,9 @@ class ServerConsumer(AsyncWebsocketConsumer):
                         angle = math.degrees(math.acos(cosine_angle))
                         if angle >70 and angle <110:
                             self.coordinate_data.append(corners)
-            with open('coordinates.txt','wb') as coordinates:
-                pickle.dump(self.coordinate_data, coordinates)
+            with open('coordinates.txt','w') as coordinates:
+                    json.dump(self.coordinates, coordinate, indent=4)
+
 
 
         elif req.get('task') == 'save_network_settings':
@@ -432,100 +555,16 @@ class ServerConsumer(AsyncWebsocketConsumer):
 
 
         # HANDLE REQUEST TO MAKE THE SYSTEM LIVE
-        elif req.get('task') == 'live':
-            # scan slog funcion
-            _, CurrentAvailableSlots , OccupiedSlots, poslist, frame_list_of_cropped_images = await scan_slots()
-            lastAvailableSlots = CurrentAvailableSlots
-            while True:
-                await asyncio.sleep(.1)        
-                _, CurrentAvailableSlots , OccupiedSlots, poslist, frame_list_of_cropped_images = await scan_slots()
-                encoded_spaces = []
-                for space in frame_list_of_cropped_images:
-                    ret, buffer = cv2.imencode('.jpg', space)
-                    frame_bytes = buffer.tobytes()
-                    encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
-                    frame = f"data:image/jpeg;base64,{encoded_frame}"
-                    encoded_spaces.append(frame)
-                print('sending space frames to frontend')
-                await self.send(json.dumps({'fnames': encoded_spaces}))
+        elif req.get('task') == 'monitor':
+            # THIS FUNCTION WILL UPDATE THE SPACE_VEIWS.TXT WITH NEW SPACE FRAMES ON EACH CALL
+            await monitor_spaces()
+            with open('space_views.txt','r') as space_views:
+                SPACEVIEWS = json.load(space_views)
+                await self.send(json.dumps(SPACEVIEWS)) 
+            
+            
 
-                if len(CurrentAvailableSlots) != len(lastAvailableSlots):
-                    # time.sleep(1)
-                    _, CurrentAvailableSlots , OccupiedSlots, poslist, frame_list_of_cropped_images = await scan_slots()
-                    if len(CurrentAvailableSlots) < len(lastAvailableSlots):
-                        for slot in lastAvailableSlots:
-                            if slot not in CurrentAvailableSlots:
-                                last_parked_slot = slot
-                                if DEBUG:print('Parked at space :', slot)
-                                await self.send(json.dumps({"slot":slot,"status":"parked"}))
-                                def dectect_license_plate(slot):
-                                    if DEBUG:print('starting License Plate number dectection',last_parked_slot)
-                                    waitToScanFor = 10
-                                    timer = 0
-                                    while True:
-                                        timer += 1
-                                        if timer == waitToScanFor:
-                                            break
-                                        time.sleep(1)
-                                    listOfLicenceNumbers = []
-                                    reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
-                                    result = reader.readtext(cropped_image)
-                                    data = [entry[1] for entry in result]
-                                    for text in data:
-                                        if len(text) != 0 and len(text) > 4:
-                                            listOfLicenceNumbers.append({'slot_id':slot,'Number':text}) 
-                                            
-                                    async def senddata():
-                                        await self.send(json.dumps({"slot":slot,"license":text}))
-                                    senddata()
-                                    if DEBUG:print("Vehicle Details",listOfLicenceNumbers)
-                                    if len(listOfLicenceNumbers) >= 0:
-                                        print('sending data to server')
-                                        network_handler(timestamp = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"), status  = 'Occupied', licenseNumber = listOfLicenceNumbers)
-                                    # else:
-                                    #     dectect_license_plate()
-
-                                tread1 = threading.Thread(target=dectect_license_plate, args=(last_parked_slot,))
-                                tread1.start()
-
-                        lastAvailableSlots = CurrentAvailableSlots
-                        pos = poslist[OccupiedSlots[-1]]
-                        SlotCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
-                        x, y, w, h = cv2.boundingRect(SlotCoordinates)
-                        frame = await capture()
-                        cropped_image = frame[y:y+h, x:x+w]
-
-                        
-                        
-
-                          
-
-                    # Runs when the vehicle is unparked
-                    elif len(CurrentAvailableSlots) > len(lastAvailableSlots):
-                        '''
-                        Sends the slotData to the server in UDP protocol
-                        '''
-                        # slotData["timestamp"] = datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-                        # slotData["slot"] = "slot"
-                        # slotData["status"] = slotStatus["vaccant"]
-                        # slotData["licence_number"] = "licenseNumber"
-                        # bytesToSend  = str(slotData).encode('utf-8')
-                        # serverSocketAddress   = ("192.168.1.100", 9090)
-                        # bufferSize          = 1024
-                        # # print(self.slotData)
-                        # try:
-                        #     UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-                        #     UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
-                        # except Exception as e:
-                        #     print(e)
-
-                        for slot in CurrentAvailableSlots:
-                            if slot not in lastAvailableSlots:
-                                if DEBUG:print('UnParked from space :', slot)
-                                await self.send(json.dumps({"slot":slot,"status":"unparked"}))
-                        lastAvailableSlots = CurrentAvailableSlots
-                        
-
+            
     async def _stream_frames(self):
         try:
             async for frame in video_stream():
@@ -538,13 +577,8 @@ class ServerConsumer(AsyncWebsocketConsumer):
             self.stream_task = None 
 
     async def _stream_calibration_frames(self):
-        try:
-            async for frame in video_stream_for_calibrate():
-                await asyncio.sleep(0.1) 
-                await self.send(frame) 
-        except Exception as e:
-            if DEBUG:print(f"Error sending frame: {e}")
-        finally:
-            self.streaming = False 
-            self.stream_task = None 
+        async for frame in video_stream_for_calibrate():
+            await asyncio.sleep(0.1) 
+            data = {'frame':frame,'task':'calibrate_stream'}
+            await self.send(json.dumps(data)) 
    
