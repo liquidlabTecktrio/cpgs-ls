@@ -17,7 +17,6 @@ from cpgsapp.serializers import NetworkSettingsSerializer
 from ultralytics import YOLO
 from cpgsserver.settings import  IS_PI_CAMERA_SOURCE, MAIN_SERVER_IP
 from asgiref.sync import sync_to_async
-from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
@@ -25,9 +24,18 @@ DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
 
-GREENLIGHT = LED(2) 
-REDLIGHT = LED(3) 
-MODEBUTTON = LED(4) 
+
+
+if IS_PI_CAMERA_SOURCE:
+    from gpiozero import LED
+    GREENLIGHT = LED(2) 
+    REDLIGHT = LED(3) 
+    MODEBUTTON = LED(4) 
+    from picamera2 import Picamera2
+    cap = Picamera2()
+    cap.start()
+else:
+    cap = cv2.VideoCapture(0) 
 
 
 def network_handler():
@@ -94,23 +102,20 @@ async def capture(task):
     global cap
     if (task == "run"):
         if IS_PI_CAMERA_SOURCE:
-            from picamera2 import Picamera2
-            cap = Picamera2()
-            cap.start()
             frame = cap.capture_array()
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         else:
-            cap = cv2.VideoCapture(0) 
             ret, frame = cap.read()
 
         frame  = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
         return frame
 
     elif (task == 'stop'):
-        if IS_PI_CAMERA_SOURCE:
-          cap.close()
-        else:
-          cap.release()
+        pass
+        # if IS_PI_CAMERA_SOURCE:
+        #   cap.close()
+        # else:
+        #   cap.release()
           
 
 @sync_to_async
