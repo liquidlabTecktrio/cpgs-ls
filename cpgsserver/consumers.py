@@ -17,12 +17,17 @@ from cpgsapp.serializers import NetworkSettingsSerializer
 from ultralytics import YOLO
 from cpgsserver.settings import  IS_PI_CAMERA_SOURCE, MAIN_SERVER_IP
 from asgiref.sync import sync_to_async
+from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
 DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
+
+GREENLIGHT = LED(2) 
+REDLIGHT = LED(3) 
+MODEBUTTON = LED(4) 
 
 
 def network_handler():
@@ -97,6 +102,7 @@ async def capture(task):
         else:
             cap = cv2.VideoCapture(0) 
             ret, frame = cap.read()
+
         frame  = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
         return frame
 
@@ -132,6 +138,14 @@ def SpaceMonitoringInfo():
         SPACES = json.load(space_views)
     return SPACES
 
+def PilotToGreen():
+    GREENLIGHT.off()
+    REDLIGHT.on()
+
+def PilotToRed():
+    GREENLIGHT.on()
+    REDLIGHT.off()
+
 def image_to_base64(frame):
     try:
         # Ensure frame is C-contiguous
@@ -162,8 +176,10 @@ def pilot_handler():
     AvailableVaccantSpaces = TOTALSPACES - NoOfOccupiedSpaces
     if AvailableVaccantSpaces == 0:
         print('Setting Pilot to Red')
+        PilotToRed()
     else:
         print('Setting pilot to Green')
+        PilotToGreen()
     return 
 
 
