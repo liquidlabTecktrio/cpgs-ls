@@ -27,13 +27,18 @@ DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
 
-GREENLIGHT = LED(2) 
-REDLIGHT = LED(3) 
-MODEBUTTON = LED(4) 
+
 # Global camera setup
-cap = Picamera2() if IS_PI_CAMERA_SOURCE else cv2.VideoCapture(0)
+
 if IS_PI_CAMERA_SOURCE:
+    GREENLIGHT = LED(2) 
+    REDLIGHT = LED(3) 
+    MODEBUTTON = LED(4) 
+    from picamera2 import Picamera2
+    cap = Picamera2()
     cap.start()
+    
+else: cap = cv2.VideoCapture(0)
 
 def saveFile(filename, image):
     _, buffer = cv2.imencode('.jpg', image)
