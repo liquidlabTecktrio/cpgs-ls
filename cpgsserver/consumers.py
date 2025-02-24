@@ -4,6 +4,8 @@ import base64
 import json
 import math
 import pickle
+import threading
+import time
 import django
 import base64
 import numpy as np
@@ -17,6 +19,7 @@ from cpgsapp.serializers import NetworkSettingsSerializer
 from ultralytics import YOLO
 from cpgsserver.settings import  IS_PI_CAMERA_SOURCE, MAIN_SERVER_IP
 from asgiref.sync import sync_to_async
+from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
@@ -24,19 +27,55 @@ DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
 
-
-
+GREENLIGHT = LED(2) 
+REDLIGHT = LED(3) 
+MODEBUTTON = LED(4) 
+# Global camera setup
+cap = Picamera2() if IS_PI_CAMERA_SOURCE else cv2.VideoCapture(0)
 if IS_PI_CAMERA_SOURCE:
-    from gpiozero import LED
-    GREENLIGHT = LED(2) 
-    REDLIGHT = LED(3) 
-    MODEBUTTON = LED(4) 
-    from picamera2 import Picamera2
-    cap = Picamera2()
     cap.start()
-else:
-    cap = cv2.VideoCapture(0) 
 
+def saveFile(filename, image):
+    _, buffer = cv2.imencode('.jpg', image)
+    image_bytes = buffer.tobytes() 
+    with open(f'{filename}.jpg','wb') as file:
+        file.write(image_bytes)
+
+# GET ONE FRAME
+def capture():
+    """Synchronous capture function for threading or multiprocessing."""
+    global cap
+    print('taking')
+    while True:
+        if IS_PI_CAMERA_SOURCE:
+            frame = cap.capture_array()
+            if frame is not None:
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            else:
+                print("Failed to capture frame from PiCamera")
+                time.sleep(1)
+                continue
+        else:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to capture frame from VideoCapture")
+                time.sleep(1)
+                continue
+
+        if frame is not None and frame.size > 0:  # Ensure frame is valid
+            frame = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
+            saveFile('camera_view', frame)
+            print("Frame captured and saved")
+        else:
+            print("Invalid frame received")
+
+        time.sleep(1)  # Control frame rate
+        
+    
+
+
+ShootCameraThread = threading.Thread(target=capture)
+ShootCameraThread.start()
 
 def network_handler():
     spaceInfo = SpaceInfo()
@@ -97,25 +136,12 @@ async def video_stream_for_calibrate():
         readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
         yield readyToSendFrame
 
-# GET ONE FRAME
-async def capture(task):
-    global cap
-    if (task == "run"):
-        if IS_PI_CAMERA_SOURCE:
-            frame = cap.capture_array()
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        else:
-            ret, frame = cap.read()
 
-        frame  = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
-        return frame
-
-    elif (task == 'stop'):
-        pass
-        # if IS_PI_CAMERA_SOURCE:
-        #   cap.close()
-        # else:
-        #   cap.release()
+    # elif (task == 'stop'):
+    #     if IS_PI_CAMERA_SOURCE:
+    #       cap.close()
+    #     else:
+    #       cap.release()
           
 
 @sync_to_async
@@ -126,12 +152,7 @@ def get_network_settings():
     return serialized_settings.data
 
 
-def saveFile(filename, image):
-        _, buffer = cv2.imencode('.jpg', image)
-        image_bytes = buffer.tobytes() 
 
-        with open(f'{filename}.jpg','wb') as file:
-            file.write(image_bytes)
 
 def SpaceInfo():
     with open('spaces.txt','r') as spaces:
@@ -318,9 +339,10 @@ async def monitor_spaces():
     with open('space_views.txt', 'w') as space_views:
         json.dump(SPACES, space_views,indent=4)
 
-    camera_view = await capture('run')
-    saveFile('camera_view',camera_view)
-    await capture('stop')
+    # camera_view = await capture('run')
+    # camera_view = cv2.imread("camera_view.jpg")
+    # saveFile('camera_view',camera_view)
+    # await capture('stop')
 
     space_coordinate_list = []
 
@@ -413,19 +435,22 @@ class ServerConsumer(AsyncWebsocketConsumer):
 
         # HANDLE LIVESTREAM STOP REQUESTS
         elif req.get("task") == 'stopstream':
-            if self.streaming:
-                self.streaming = False
-                if self.stream_task:
-                    self.stream_task.cancel()
-                    try:
-                        await self.stream_task
-                    except asyncio.CancelledError:
-                        print("Stream canceled")
-            await capture('stop')
+            pass
+            # if self.streaming:
+            #     self.streaming = False
+            #     if self.stream_task:
+            #         self.stream_task.cancel()
+            #         try:
+            #             await self.stream_task
+            #         except asyncio.CancelledError:
+            #             print("Stream canceled")
+            # await capture('stop')
 
         # HANDLE REQUEST FOR THE MANUAL CALIBRATION FRAMES
         elif req.get("task") == 'get_calibrating_frame':
-            frame  = await capture('run')
+            # frame  = await capture('run')
+
+            frame = cv2.imread("camera_view.jpg")
             with open('coordinates.txt','r')as data:
                 for space_coordinates in json.load(data):
                         print("space - ",space_coordinates)
