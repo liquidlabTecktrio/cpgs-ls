@@ -23,6 +23,7 @@ from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
+reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
 DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
@@ -250,7 +251,6 @@ def DectectLicensePlateWithSpaceView(space_view):
 
 def RecognizeLicensePlate(licensePlate):
         
-        reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
         scanRound = 0
         maxConfidence = 0
         licenseNumberWithMoreConfidence = ""
@@ -275,10 +275,12 @@ def getLicensePlate(spaceDetails):
         print(f'Scanning spaceID {spaceID}')
         camera_view = cv2.imread("camera_view.jpg")  
         space_view = camera_view[y:y+h, x:x+w]
+        print('dectecting')
         licensePlate=DectectLicensePlate(space_view)
 
         SPACES = SpaceInfo()
         if licensePlate is not None:
+            print('recognising')
             licenseNumber = RecognizeLicensePlate(licensePlate)
             for space in SPACES:
                 if space['spaceID'] == spaceID:
@@ -292,15 +294,19 @@ def getLicensePlate(spaceDetails):
             saveFile(spaceID, licensePlate)
 
 
-def getSpaceMonitors(spaceDetails):
+def getSpaceMonitors(spaceID, x, y, w, h ):
 
-        spaceID, x, y, w, h = spaceDetails
+        # spaceID, x, y, w, h = spaceDetails
         print(f'Scanning spaceID {spaceID}')
         camera_view = cv2.imread("camera_view.jpg")  
         space_view = camera_view[y:y+h, x:x+w]
+        print('dectecting')
+
         licensePlateinSpace, licensePlate = DectectLicensePlateWithSpaceView(space_view)
+        print('recognize')
         licenseNumber = RecognizeLicensePlate(licensePlate)
-        # print("license Number is ",licenseNumber)
+        # licenseNumber = "test"
+        print("license Number is ",licenseNumber)
 
         saveFile(f'spaceViewOfSpaceID{spaceID}',licensePlateinSpace)
         licensePlateinSpaceInBase64 = image_to_base64(licensePlateinSpace)
@@ -358,9 +364,11 @@ async def monitor_spaces():
         x, y, w, h = cv2.boundingRect(pts)
         space_coordinate_list.append((spaceID,x,y,w,h))
 
-    if len(space_coordinate_list) > 0:
-        with Pool(initializer=django.setup) as pool: 
-            pool.map(getSpaceMonitors, space_coordinate_list)
+        getSpaceMonitors(spaceID, x, y, w, h)
+
+    # if len(space_coordinate_list) > 0:
+    #     with Pool(initializer=django.setup) as pool: 
+    #         pool.map(getSpaceMonitors, space_coordinate_list)
 
 
 # SCAN EACH SPACE/SLOT FOR VEHICLE DECTECTION
