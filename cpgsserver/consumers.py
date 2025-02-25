@@ -3,7 +3,6 @@ import asyncio
 import base64
 import json
 import math
-import pickle
 import threading
 import time
 import django
@@ -12,9 +11,7 @@ import numpy as np
 from  multiprocessing import Pool
 from channels.generic.websocket import AsyncWebsocketConsumer
 import cv2
-import easyocr
 from paddleocr import PaddleOCR
-import imutils
 import subprocess
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
@@ -28,13 +25,13 @@ model = YOLO("license_plate_detector.pt")
 print('Initiating paddle model')
 # reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
 # reader = easyocr.Reader(['en'], gpu=False, detector=True, recognizer=True, model_storage_directory='LanguageModels', download_enabled=False)
-ocr = PaddleOCR(
-    lang="en",  
-    det_model_dir="models/ch_PP-OCRv3_det_infer",  
-    rec_model_dir="models/ch_PP-OCRv3_rec_infer",  
-    use_angle_cls=False,  # Disable angle classification for speed
-    use_gpu=False
-)
+# ocr = PaddleOCR(
+#     lang="en",  
+#     det_model_dir="models/ch_PP-OCRv3_det_infer",  
+#     rec_model_dir="models/ch_PP-OCRv3_rec_infer",  
+#     use_angle_cls=False,  # Disable angle classification for speed
+#     use_gpu=False
+# )
 
 DEBUG = True
 VACCENTSPACES = 0
