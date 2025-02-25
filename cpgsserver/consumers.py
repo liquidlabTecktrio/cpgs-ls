@@ -25,9 +25,10 @@ from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
-print('Initiating easyocr model')
+print('Initiating paddle model')
 # reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
-reader = easyocr.Reader(['en'], gpu=False, detector=True, recognizer=True, model_storage_directory='LanguageModels', download_enabled=False)
+# reader = easyocr.Reader(['en'], gpu=False, detector=True, recognizer=True, model_storage_directory='LanguageModels', download_enabled=False)
+ocr = PaddleOCR(use_angle_cls=True, use_gpu=False)
 
 DEBUG = True
 VACCENTSPACES = 0
@@ -270,8 +271,7 @@ def RecognizeLicensePlate(licensePlate):
                 # contours = imutils.grab_contours(keypoints)
                 # contours = sorted(contours, key = cv2.contourArea, reverse=True)[:10]
                 
-                result = reader.readtext(licensePlate)
-                ocr = PaddleOCR(use_angle_cls=True, use_gpu=False)
+                # result = reader.readtext(licensePlate)
                 results = ocr.ocr(licensePlate, cls=True)
 
                 # Print results
