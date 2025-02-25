@@ -32,9 +32,7 @@ ocr = PaddleOCR(use_angle_cls=True, use_gpu=False)
 
 DEBUG = True
 VACCENTSPACES = 0
-TOTALSPACES = 0
-
-
+TOTALSPACES = 0 
 # Global camera setup
 
 if IS_PI_CAMERA_SOURCE:
