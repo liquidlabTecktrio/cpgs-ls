@@ -4,6 +4,8 @@ import cv2
 from django.http import StreamingHttpResponse, JsonResponse
 from django.shortcuts import render,HttpResponse
 from cpgsserver.consumers import scan_spaces
+
+
 # from rest_framework.response import Response
 async def initiate(req):     
     Loop = True
@@ -15,7 +17,6 @@ async def initiate(req):
                 Loop = False
             else:
                 await scan_spaces()
-    print('ready')
     return HttpResponse("initiated")
 
 # Create your views here.

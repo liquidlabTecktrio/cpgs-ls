@@ -50,7 +50,7 @@ def saveFile(filename, image):
 def capture():
     """Synchronous capture function for threading or multiprocessing."""
     global cap
-    print('taking')
+    print('camera started')
     while True:
         if IS_PI_CAMERA_SOURCE:
             frame = cap.capture_array()
@@ -70,7 +70,7 @@ def capture():
         if frame is not None and frame.size > 0:  # Ensure frame is valid
             frame = cv2.resize(frame, (720, 480), interpolation=cv2.INTER_AREA)
             saveFile('camera_view', frame)
-            print("Frame captured and saved")
+            # print("Frame captured and saved")
         else:
             print("Invalid frame received")
 
@@ -160,12 +160,12 @@ def get_network_settings():
 
 
 def SpaceInfo():
-    with open('spaces.txt','r') as spaces:
+    with open('spaceDataForServer.txt','r') as spaces:
         SPACES = json.load(spaces)
     return SPACES
 
 def SpaceMonitoringInfo():
-    with open('space_views.txt','r') as space_views:
+    with open('spaceDataForClient.txt','r') as space_views:
         SPACES = json.load(space_views)
     return SPACES
 
@@ -286,7 +286,7 @@ def getLicensePlate(spaceDetails):
                     space['spaceStatus'] = 'occupied'
             
             
-            with open('spaces.txt', 'w') as spaces_file:
+            with open('spaceDataForServer.txt', 'w') as spaces_file:
                 json.dump(SPACES, spaces_file, indent=4)
 
             saveFile(spaceID, licensePlate)
@@ -312,7 +312,7 @@ def getSpaceMonitors(spaceDetails):
                 space['licenseNumber'] = licenseNumber
         
             
-        with open('space_views.txt', 'w') as space_views:
+        with open('spaceDataForClient.txt', 'w') as space_views:
             json.dump(SPACES, space_views, indent=4)
         return
 
@@ -324,6 +324,7 @@ async def monitor_spaces():
     '''             
     poslist =[]
     await asyncio.sleep(.1)
+
     with open('coordinates.txt','r')as data:
         poslist = json.load(data)
     
@@ -341,8 +342,8 @@ async def monitor_spaces():
         SPACES.append(obj)
     
     
-    with open('space_views.txt', 'w') as space_views:
-        json.dump(SPACES, space_views,indent=4)
+    with open('spaceDataForClient.txt', 'w') as spaces:
+        json.dump(SPACES, spaces,indent=4)
 
     # camera_view = await capture('run')
     # camera_view = cv2.imread("camera_view.jpg")
@@ -385,7 +386,7 @@ async def scan_spaces():
             SPACES.append(obj)
         
         
-        with open('spaces.txt', 'w') as spaces_file:
+        with open('spaceDataForServer.txt', 'w') as spaces_file:
             json.dump(SPACES, spaces_file,indent=4)
 
         camera_view = await capture('run')
@@ -609,7 +610,7 @@ class ServerConsumer(AsyncWebsocketConsumer):
         elif req.get('task') == 'monitor':
             # THIS FUNCTION WILL UPDATE THE SPACE_VEIWS.TXT WITH NEW SPACE FRAMES ON EACH CALL
             await monitor_spaces()
-            with open('space_views.txt','r') as space_views:
+            with open('spaceDataForClient.txt','r') as space_views:
                 SPACEVIEWS = json.load(space_views)
                 await self.send(json.dumps(SPACEVIEWS)) 
             

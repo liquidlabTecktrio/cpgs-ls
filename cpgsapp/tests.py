@@ -1,10 +1,19 @@
-from gpiozero import LED
-from time import sleep
+import asyncio
+import threading
+import time
 
-led = LED(17)  # Use GPIO pin 17
+
+def capture():
+
+        while True:
+            time.sleep(2)
+            print("Capturing")
+
+
+Thread = threading.Thread(target=capture)
+Thread.start()
 
 while True:
-    led.on()  # Turn ON
-    sleep(1)
-    led.off()  # Turn OFF
-    sleep(1)
+
+    time.sleep(2)
+    print('hello')
