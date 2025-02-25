@@ -23,6 +23,7 @@ from gpiozero import LED
 
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
+print('Initiating easyocr model')
 reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
 DEBUG = True
 VACCENTSPACES = 0
