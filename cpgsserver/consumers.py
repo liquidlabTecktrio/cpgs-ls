@@ -13,6 +13,7 @@ from  multiprocessing import Pool
 from channels.generic.websocket import AsyncWebsocketConsumer
 import cv2
 import easyocr
+import imutils
 import subprocess
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
@@ -24,7 +25,9 @@ from gpiozero import LED
 # Load YOLO model once
 model = YOLO("license_plate_detector.pt")
 print('Initiating easyocr model')
-reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
+# reader = easyocr.Reader(model_storage_directory = 'LanguageModels', lang_list = ['en'])
+reader = easyocr.Reader(['en'], gpu=False, detector=True, recognizer=True, model_storage_directory='LanguageModels', download_enabled=False)
+
 DEBUG = True
 VACCENTSPACES = 0
 TOTALSPACES = 0
@@ -259,6 +262,13 @@ def RecognizeLicensePlate(licensePlate):
         if licensePlate is not None:
             while scanRound < 5: 
                 scanRound  = scanRound + 1
+                gray = cv2.cvtColor(licensePlate, cv2.COLOR_BAYER_BG2GRAY)
+                bfilter = cv2.bilateralFilter(gray, 11, 11, 17)
+                edged = cv2.Canny(bfilter, 30,200)
+                keypoints = cv2.findContours(edged.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+                contours = imutils.grab_contours(keypoints)
+                contours = sorted(contours, key = cv2.contourArea, reverse=True)[:10]
+                
                 result = reader.readtext(licensePlate)
                 result = [(entry[1],entry[2]) for entry in result][0]
                 licenseNumber, confidence = result
