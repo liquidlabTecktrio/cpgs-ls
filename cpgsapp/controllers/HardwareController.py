@@ -12,21 +12,21 @@ if IS_PI_CAMERA_SOURCE:
     REDLIGHT = LED(3) 
     MODEBUTTON = LED(4) 
 
-def get_threshold(self, data):
+def get_threshold(data):
     print('new thresh',data.threshold)
     with open('config.json','rb') as file:
         data = json.load(file)
     return True, data
 
-def set_pilot_to_green(self):
+def set_pilot_to_green():
     GREENLIGHT.off()
     REDLIGHT.on()
 
-def set_pilot_to_red(self):
+def set_pilot_to_red():
     GREENLIGHT.on()
     REDLIGHT.off()
 
-def update_pilot(self):
+def update_pilot():
     occupiedSpaceList = []
     for space in FileSystemContoller.get_space_info():
         if space['spaceStatus']=='occupied':
