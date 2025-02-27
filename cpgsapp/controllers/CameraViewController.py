@@ -206,6 +206,8 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
             if space['spaceID'] == spaceID:
                 space['spaceFrame'] = Variables.licensePlateinSpaceInBase64
                 space['licensePlate'] = Variables.licensePlateBase64
+                space['spaceStatus'] = "occupied"
+                
         
         with open('storage/spaceInfo.txt', 'w') as space_views:
             json.dump(Variables.SPACES, space_views, indent=4)
