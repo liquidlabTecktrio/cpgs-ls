@@ -5,17 +5,16 @@ import math
 from multiprocessing import Pool
 import threading
 import time
-
 import cv2
 import django
 import numpy as np
 from cpgsapp.controllers.FileSystemContoller import get_space_coordinates, get_space_info, save_image
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from storage import Variables
-from ultralytics import YOLO
+# from ultralytics import YOLO
 # from paddleocr import PaddleOCR
 
-model = YOLO("storage/license_plate_detector.pt")
+# model = YOLO("storage/best.pt")
 # ocr = PaddleOCR(
 #     lang="en",  
 #     det_model_dir="models/ch_PP-OCRv3_det_infer",  
@@ -28,7 +27,7 @@ if IS_PI_CAMERA_SOURCE:
     Variables.cap = Picamera2()
     Variables.cap.start()
     
-else: Variables.cap = cv2.VideoCapture(1)
+else: Variables.cap = cv2.VideoCapture(0)
 
 def image_to_base64(frame):
     try:
@@ -51,21 +50,50 @@ def image_to_base64(frame):
         print(f"Error converting frame to base64: {str(e)}")
         return None
 
+# def dectect_license_plate(space):
+#     """Detects license plates in a frame and returns the cropped license plate image."""
+#     isLicensePlate = False
+#     results = model.predict(space, conf=0.5)
+#     license_plate = None
+#     for result in results:
+#         for box in result.boxes:
+#             x1, y1, x2, y2 = map(int, box.xyxy[0])
+#             cls = int(box.cls[0])
+#             if cls == 0: 
+#                 isLicensePlate = True 
+#                 cv2.rectangle(space, (x1, y1), (x2, y2), (0, 255, 0), 3)
+#                 cv2.putText(space, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+#                 license_plate = space[y1:y2, x1:x2]
+#     return space, license_plate, isLicensePlate
+
+
+import cv2
 def dectect_license_plate(space):
-    """Detects license plates in a frame and returns the cropped license plate image."""
+    # Load the pre-trained Haar Cascade for license plate detection
+    plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
+
+    # Load image
     isLicensePlate = False
-    results = model.predict(space, conf=0.5)
+    # image = cv2.imread('test3.jpg')  # Replace 'your_image.jpg' with your image file
+    gray = cv2.cvtColor(space, cv2.COLOR_BGR2GRAY)
+
+    # Detect plates
     license_plate = None
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            cls = int(box.cls[0])
-            if cls == 0: 
-                isLicensePlate = True
-                cv2.rectangle(space, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                cv2.putText(space, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                license_plate = space[y1:y2, x1:x2]
+    plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
+
+    # Loop through all detected plates and draw rectangles around them
+    for (x, y, w, h) in plates:
+        isLicensePlate = True 
+        cv2.rectangle(space, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle in green color
+        license_plate = space[y:y+h, x:x+w]
+    
     return space, license_plate, isLicensePlate
+
+# # Show the image with detected plates
+# cv2.imshow("Detected Number Plates", image)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+
 
 def RecognizeLicensePlate(licensePlate):
     scanRound = 0
@@ -133,7 +161,7 @@ def capture():
         else:
             print("Invalid frame received")
 
-        time.sleep(1)  # Control frame rate
+        time.sleep(0.1)  # Control frame rate
         
     
 
