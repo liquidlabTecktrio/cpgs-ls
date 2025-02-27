@@ -34,8 +34,8 @@ def update_server():
     # try:
     # url = MAIN_SERVER_IP
     # requests.post(url, json=slotData)
-    message = "Updated to MS"
-    bytesToSend = message.encode() 
+    # message = spaceInfo
+    bytesToSend = spaceInfo.encode() 
     UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
     print('Updated to MS')
