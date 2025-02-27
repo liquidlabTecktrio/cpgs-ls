@@ -14,7 +14,9 @@ from cpgsserver.settings import MAIN_SERVER_IP, MAIN_SERVER_PORT
 
 
 def update_server():
-    spaceInfo = get_space_info()
+
+
+ 
     timestamp = ""
     device_id = 20001
     mac_addr = "SDF34:34DFS:L#43:DF"
@@ -35,10 +37,11 @@ def update_server():
     # url = MAIN_SERVER_IP
     # requests.post(url, json=slotData)
     # message = spaceInfo
-    bytesToSend = spaceInfo.encode() 
-    UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
-    print('Updated to MS')
+    with open('storage/spaceInfo.txt','r') as spaces:
+        bytesToSend = spaces.encode() 
+        UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
+        print('Updated to MS')
 
     # except Exception as e:
     #     print(e)
