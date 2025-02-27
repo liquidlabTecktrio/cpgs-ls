@@ -1,9 +1,49 @@
 
 # Networking
+import socket
 import subprocess
 
+import requests
+
+from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
+from cpgsserver.settings import MAIN_SERVER_IP, MAIN_SERVER_PORT
+
+
+
+
+def update_server():
+    spaceInfo = get_space_info()
+    timestamp = ""
+    device_id = 20001
+    mac_addr = "SDF34:34DFS:L#43:DF"
+    ip_address = "192.168.1.25"
+    ssid = "CPGSWIFI"
+    device_mode = "LIVE"
+    licenseNumber = "kl23f345"
+    space_id = 1003
+    '''
+    Sends the slotData to the server in UDP protocol
+    '''
+    # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
+    slotData = {
+    "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
+    }
+        
+    # try:
+    # url = MAIN_SERVER_IP
+    # requests.post(url, json=slotData)
+    message = "Updated to MS"
+    bytesToSend = message.encode() 
+    UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
+    print('Updated to MS')
+
+    # except Exception as e:
+    #     print(e)
+    
+    
 def change_hostname(data):
         new_hostname = data['new_hostname']
         with open('/etc/hostname', 'w') as f:
@@ -38,37 +78,37 @@ def set_dynamic_ip(data):
     subprocess.run(['nmcli', 'con', 'up', connection_name])
     return True
 
-@sync_to_async
+# @sync_to_async
 def get_network_settings():
     currentNetworkSettings = NetworkSettings.objects.first()
     print(currentNetworkSettings)
     serialized_settings = NetworkSettingsSerializer(currentNetworkSettings)
     return serialized_settings.data
 
-def network_handler():
-    spaceInfo = SpaceInfo()
-    timestamp = ""
-    device_id = 20001
-    mac_addr = "SDF34:34DFS:L#43:DF"
-    ip_address = "192.168.1.25"
-    ssid = "CPGSWIFI"
-    device_mode = "LIVE"
-    licenseNumber = "kl23f345"
-    space_id = 1003
-    '''
-    Sends the slotData to the server in UDP protocol
-    '''
-    # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-    slotData = {
-    "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-    }
+# def network_handler():
+#     spaceInfo = get_space_info()
+#     timestamp = ""
+#     device_id = 20001
+#     mac_addr = "SDF34:34DFS:L#43:DF"
+#     ip_address = "192.168.1.25"
+#     ssid = "CPGSWIFI"
+#     device_mode = "LIVE"
+#     licenseNumber = "kl23f345"
+#     space_id = 1003
+#     '''
+#     Sends the slotData to the server in UDP protocol
+#     '''
+#     # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
+#     slotData = {
+#     "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
+#     }
         
-    # try:
-    #     url = MAIN_SERVER_IP
-    #     requests.post(url, json=slotData)
-    #     # UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    #     # UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
-    print('Updated to MS')
+#     # try:
+#     #     url = MAIN_SERVER_IP
+#     #     requests.post(url, json=slotData)
+#     #     # UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+#     #     # UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
+#     print('Updated to MS')
 
 def saveNetworkSetting():
     newnetworksettings = req.get('data')
