@@ -1,114 +1,101 @@
-import json
-import subprocess
-import cv2
-from django.http import StreamingHttpResponse, JsonResponse
-from django.shortcuts import render,HttpResponse
-from cpgsserver.consumers import scan_spaces
+import threading
+from rest_framework.response import Response
+from django.shortcuts import HttpResponse
+from rest_framework.views import APIView
+from rest_framework.status import HTTP_200_OK, HTTP_406_NOT_ACCEPTABLE
+
+from cpgsapp.controllers.CameraViewController import capture, get_camera_view_with_space_coordinates, get_monitoring_spaces
+from cpgsapp.controllers.FileSystemContoller import clear_space_coordinates, get_space_coordinates, get_space_info, save_space_coordinates
 
 
-# from rest_framework.response import Response
-async def initiate(req):     
-    Loop = True
-    while Loop:
-        with open("config.json","rb") as configurations:
-            config = json.load(configurations)
-            mode = config['mode']
-            if mode != 'live':
-                Loop = False
-            else:
-                await scan_spaces()
-    return HttpResponse("initiated")
+def initiate(req):
+    ShootCameraThread = threading.Thread(target=capture)
+    ShootCameraThread.start()
+    return HttpResponse("")
 
-# Create your views here.
-def change_hostname(new_hostname):
-    # Update /etc/hostname
-    with open('/etc/hostname', 'w') as f:
-        f.write(new_hostname + '\n')
+# Handles Network related tasks
+class NetworkHandler(APIView):
+    def post(self, req):
+        task, data  = req.data['task'], req.data['data']
+        print(task, data)
+        return Response(status=HTTP_200_OK)
+    def get(self, req):
+        return Response(status=HTTP_200_OK)
 
-    # Update /etc/hosts
-    with open('/etc/hosts', 'r') as f:
-        hosts_content = f.readlines()
+# Handle Live Stream Related Tasks
+class LiveStreamHandler(APIView):
+    def post(self, req):
+        task, data  = req.data['task'], req.data['data']
+        print(task, data)
+        return Response(status=HTTP_200_OK)
+    def get(self, req):
+        return Response(status=HTTP_200_OK)
+    
+# Handle Account Related Tasks
+class AccountHandler(APIView):
+    def post(self, req):
+        task, data  = req.data['task'], req.data['data']
+        print(task, data)
+        return Response(status=HTTP_200_OK)
+    def get(self, req):
+        return Response(status=HTTP_200_OK)
 
-    with open('/etc/hosts', 'w') as f:
-        for line in hosts_content:
-            if '127.0.1.1' in line:
-                line = f'127.0.1.1\t{new_hostname}\n'
-            f.write(line)
+# Handle Monitoring space related tasks
+class MonitorHandler(APIView):
+    def post(self, req):
+        
+        if 'task' not in req.data:
+            return Response(data={"status":'Please mention a task'},status=HTTP_406_NOT_ACCEPTABLE)
+        if 'data' not in req.data:
+            return Response(data={"status":'Please mention a data'},status=HTTP_406_NOT_ACCEPTABLE)
 
-    # Change the hostname immediately
-    subprocess.run(['hostnamectl', 'set-hostname', new_hostname])
+        task, data  = req.data['task'], req.data['data']
 
-def set_static_ip(connection_name, static_ip, gateway_ip, dns_ip):
-    # Set static IP
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.addresses', static_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.gateway', gateway_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.dns', dns_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.method', 'manual'])
+        if task == 'GET_MONITOR_COUNT':
+            spaces = get_space_coordinates()
+            NoOfSpaces = len(spaces)
+            return Response(data={'data':NoOfSpaces},status=HTTP_200_OK)
+        
+        if task == 'GET_MONITOR_VIEWS':
+            spaces  = get_monitoring_spaces()
+            # print('your search is here - ',spaces)
+            return Response({'data':spaces}, status=HTTP_200_OK)
+            # return Response({"data":spaces},status=HTTP_200_OK)
 
-    # Restart the connection
-    subprocess.run(['nmcli', 'con', 'down', connection_name])
-    subprocess.run(['nmcli', 'con', 'up', connection_name])
+        
+    def get(self, req):
+        return Response(status=HTTP_200_OK)
+    
+# Handle Calibration related tasks
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
-    print(f'Static IP set to {static_ip} for {connection_name}.')
+@method_decorator(csrf_exempt, name='dispatch')
+class CalibrateHandler(APIView):
 
+    def post(self, req):
+        if 'task' not in req.data:
+            return Response(data={"status":'Please mention a task'},status=HTTP_406_NOT_ACCEPTABLE)
+        if 'data' not in req.data:
+            return Response(data={"status":'Please mention a data'},status=HTTP_406_NOT_ACCEPTABLE)
 
+        task, data  = req.data['task'], req.data['data']
 
-
-def set_dynamic_ip(connection_name):
-    # Set to DHCP
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.method', 'auto'])
-
-    # Restart the connection
-    subprocess.run(['nmcli', 'con', 'down', connection_name])
-    subprocess.run(['nmcli', 'con', 'up', connection_name])
-
-    print(f'Dynamic IP set for {connection_name}.')
-
-
-
-def video_stream():
-    # picam2 = Picamera2()
-    # picam2.start()
-    # Open the camera
-    camera = cv2.VideoCapture(0)  # Change to the appropriate camera index if needed
-    while True:
-        # Read frame from the camera
-        # frame = picam2.capture_array()
-        ret, frame = camera.read()
-        if not ret:
-                break
-
-        # Encode the frame as JPEG
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        # Yield the frame
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-
-def stream(request):
-    return StreamingHttpResponse(video_stream(), content_type='multipart/x-mixed-replace; boundary=frame')
-
-
-def update_threshold(request):
-    data = request.data
-    print(data)
-    print('new thresh',data.threshold)
-    with open('config.json','rb') as file:
-        data = json.load(file)
-        print(data)
-    return HttpResponse(data['threshold'])
-
-
-def get_threshold(request):
-    with open('config.json','rb') as file:
-        data = json.load(file)
-        print(data)
-    return HttpResponse(data['threshold'])
-
-
-def get_slot_details(request):
-    return JsonResponse({
-        'NoOfSlots':3
-    })
-
+        if task == 'UPDATE_SPACE_COORDINATES':
+            x = data['x']
+            y = data['y']
+            save_space_coordinates(x, y)
+            return Response(status=HTTP_200_OK)
+        
+        if task == 'GET_CAMERA_VIEW_WITH_COORDINATES':
+            camera_view_with_coordinates = get_camera_view_with_space_coordinates()
+            return Response(status=HTTP_200_OK, data={"data":camera_view_with_coordinates})
+        
+        if task == 'CLEAR_SPACE_COORDINATES':
+            clear_space_coordinates()
+            return Response(status=HTTP_200_OK)
+        
+        return Response(status=HTTP_200_OK)
+    def get(self, req):
+        return Response(status=HTTP_200_OK)
+    

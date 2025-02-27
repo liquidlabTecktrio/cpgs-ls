@@ -6,3 +6,10 @@ class NetworkSettingsSerializer(serializers.ModelSerializer):
      class Meta:
         model = NetworkSettings
         fields = "__all__"
+
+class SpaceInfoSerializer(serializers.ModelSerializer):
+     class Meta:
+        model = NetworkSettings
+        fields = "__all__"
+
+
