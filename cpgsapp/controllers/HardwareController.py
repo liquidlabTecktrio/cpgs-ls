@@ -2,9 +2,9 @@
 # HardwareConfiguration controller
 
 import json
+from cpgsapp.controllers import FileSystemContoller
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from gpiozero import LED
-import FileSystemContoller
 from storage import Variables
 
 if IS_PI_CAMERA_SOURCE:
