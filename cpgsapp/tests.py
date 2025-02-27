@@ -1,37 +1,20 @@
 import cv2
-import numpy as np
-from paddleocr import PaddleOCR
+
+# Load the pre-trained Haar Cascade for license plate detection
+plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
 
 # Load image
-image = cv2.imread("0.jpg")
+image = cv2.imread('test3.jpg')  # Replace 'your_image.jpg' with your image file
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# # Convert to grayscale
-# gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# Detect plates
+plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
 
-# # Apply Gaussian blur
-# blurred = cv2.GaussianBlur(gray, (5,5), 0)
+# Loop through all detected plates and draw rectangles around them
+for (x, y, w, h) in plates:
+    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle in green color
 
-# # Apply Adaptive Thresholding
-# thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-# # Save processed image and run OCR
-ocr = PaddleOCR(
-    lang="en",  
-    det_model_dir="models/ch_PP-OCRv3_det_infer",  
-    rec_model_dir="models/ch_PP-OCRv3_rec_infer",  
-    use_angle_cls=False,  # Disable angle classification for speed
-    use_gpu=False
-)
-
-# cv2.imwrite("processed_car.jpg", thresh)
-while True:
-    results = ocr.ocr("0.jpg", cls=True)
-    
-    # Print results
-    for line in results[0]:
-        print(line[1][0])  # Extracted text
-
-# Show image
-# cv2.imshow("Processed Image", thresh)
+# Show the image with detected plates
+cv2.imshow("Detected Number Plates", image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
