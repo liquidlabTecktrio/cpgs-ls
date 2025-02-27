@@ -36,6 +36,6 @@ def update_pilot():
             if AvailableVaccantSpaces == 0:
                 print('Setting Pilot to Red')
                 set_pilot_to_red()
-            else:
-                print('Setting pilot to Green')
-                set_pilot_to_green()
+        else:
+            print('Setting pilot to Green')
+            set_pilot_to_green()
