@@ -38,7 +38,8 @@ def update_server():
     # requests.post(url, json=slotData)
     # message = spaceInfo
     with open('storage/spaceInfo.txt','r') as spaces:
-        bytesToSend = spaces.encode() 
+        bytesToSend = str(spaces).encode()
+        print("byes array - ",bytesToSend)
         UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
         print('Updated to MS')
