@@ -5,6 +5,7 @@ import json
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from gpiozero import LED
 import FileSystemContoller
+from storage import Variables
 
 if IS_PI_CAMERA_SOURCE:
     GREENLIGHT = LED(2) 
@@ -31,10 +32,10 @@ def update_pilot(self):
         if space['spaceStatus']=='occupied':
             occupiedSpaceList.append(space)
             NoOfOccupiedSpaces = len(occupiedSpaceList)
-            AvailableVaccantSpaces = TOTALSPACES - NoOfOccupiedSpaces
+            AvailableVaccantSpaces = Variables.TOTALSPACES - NoOfOccupiedSpaces
             if AvailableVaccantSpaces == 0:
                 print('Setting Pilot to Red')
-                self.set_pilot_to_red()
+                set_pilot_to_red()
             else:
                 print('Setting pilot to Green')
-                self.set_pilot_to_green()
+                set_pilot_to_green()

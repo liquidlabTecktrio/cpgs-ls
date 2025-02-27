@@ -9,6 +9,7 @@ import cv2
 import django
 import numpy as np
 from cpgsapp.controllers.FileSystemContoller import get_space_coordinates, get_space_info, save_image
+from cpgsapp.controllers.HardwareController import update_pilot
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from storage import Variables
 # from ultralytics import YOLO
@@ -222,9 +223,9 @@ def get_monitoring_spaces():
 
     Variables.SPACES = []
     
-    TOTALSPACES = len(poslist)
-    print('Found ',TOTALSPACES , "space")
-    for spaceID in range(TOTALSPACES):
+    Variables.TOTALSPACES = len(poslist)
+    print('Found ',Variables.TOTALSPACES , "space")
+    for spaceID in range(Variables.TOTALSPACES):
 
         obj = {
             'spaceID':spaceID,
@@ -252,6 +253,7 @@ def get_monitoring_spaces():
     #         pool.map(getSpaceMonitorWithLicensePlateDectection, Variables.space_coordinate_list)
 
     # print("space info", get_space_info())
+    update_pilot()
     return get_space_info()
 
 
