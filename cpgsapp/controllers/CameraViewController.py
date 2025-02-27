@@ -199,15 +199,17 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
 
-        if isLicensePlate:
-            Variables.licensePlateBase64 = image_to_base64(Variables.licensePlate)
+        
 
         for space in Variables.SPACES:
             if space['spaceID'] == spaceID:
+                if isLicensePlate:
+                    Variables.licensePlateBase64 = image_to_base64(Variables.licensePlate)
+                    space['spaceStatus'] = "occupied"
                 space['spaceFrame'] = Variables.licensePlateinSpaceInBase64
                 space['licensePlate'] = Variables.licensePlateBase64
-                space['spaceStatus'] = "occupied"
                 
+
         
         with open('storage/spaceInfo.txt', 'w') as space_views:
             json.dump(Variables.SPACES, space_views, indent=4)
@@ -220,7 +222,7 @@ def get_monitoring_spaces():
     SCAN the parking slot FOR VEHICLE
     '''      
 
-    print("started")       
+    # print("started")       
     poslist = get_space_coordinates()
 
     Variables.SPACES = []
