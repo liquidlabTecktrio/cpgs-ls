@@ -52,21 +52,6 @@ def image_to_base64(frame):
         print(f"Error converting frame to base64: {str(e)}")
         return None
 
-# def dectect_license_plate(space):
-#     """Detects license plates in a frame and returns the cropped license plate image."""
-#     isLicensePlate = False
-#     results = model.predict(space, conf=0.5)
-#     license_plate = None
-#     for result in results:
-#         for box in result.boxes:
-#             x1, y1, x2, y2 = map(int, box.xyxy[0])
-#             cls = int(box.cls[0])
-#             if cls == 0: 
-#                 isLicensePlate = True 
-#                 cv2.rectangle(space, (x1, y1), (x2, y2), (0, 255, 0), 3)
-#                 cv2.putText(space, "License Plate", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-#                 license_plate = space[y1:y2, x1:x2]
-#     return space, license_plate, isLicensePlate
 
 
 import cv2
@@ -91,30 +76,6 @@ def dectect_license_plate(space):
     
     return space, license_plate, isLicensePlate
 
-# # Show the image with detected plates
-# cv2.imshow("Detected Number Plates", image)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-
-def RecognizeLicensePlate(licensePlate):
-    scanRound = 0
-    maxConfidence = 0
-    licenseNumberWithMoreConfidence = ""
-    if licensePlate is not None:
-        while scanRound < 5: 
-            scanRound  = scanRound + 1
-            results = ocr.ocr(licensePlate, cls=True)
-            if results:
-                for line in results[0]:
-                    licenseNumber  = line[1][0]
-                    confidence =  line[1][1]
-                    if confidence > maxConfidence:
-                        maxConfidence = confidence
-                        licenseNumberWithMoreConfidence = licenseNumber
-        print('Captured', licenseNumberWithMoreConfidence,"with confidence", confidence)
-        return licenseNumberWithMoreConfidence
-    return licenseNumberWithMoreConfidence
 
 
 async def video_stream_for_calibrate():
@@ -122,9 +83,7 @@ async def video_stream_for_calibrate():
         frame  = await capture('run')
         with open('coordinates.txt','r')as data:
             for space_coordinates in json.load(data):
-                    print("space - ",space_coordinates)
                     for index in range (0,len(space_coordinates)-1):
-                        # print(int(space_coordinates[index][0]), "----------")
                         x1 = int(space_coordinates[index][0])
                         y1 = int(space_coordinates[index][1])
                         x2 = int(space_coordinates[index+1][0])
@@ -157,7 +116,7 @@ def capture():
                 continue
 
         if frame is not None and frame.size > 0:  # Ensure frame is valid
-            frame = cv2.resize(frame, (720,576 ), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(frame, (1020,576 ), interpolation=cv2.INTER_AREA)
             save_image('camera_view', frame)
             # print("Frame captured and saved")
         else:
@@ -172,7 +131,7 @@ def get_camera_view_with_space_coordinates():
     
     with open('storage/coordinates.txt','r')as data:
         for space_coordinates in json.load(data):
-                print("space - ",space_coordinates)
+                # print("space - ",space_coordinates)
                 for index in range (0,len(space_coordinates)-1):
                     # print(int(space_coordinates[index][0]), "----------")
                     x1 = int(space_coordinates[index][0])
@@ -193,14 +152,12 @@ def get_camera_view_with_space_coordinates():
 
 def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
         
-        print(f'Scanning spaceID {spaceID}')
+        # print(f'Scanning spaceID {spaceID}')
         camera_view = cv2.imread("storage/camera_view.jpg")  
         space_view = camera_view[y:y+h, x:x+w]
 
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
-
-        
 
         for space in Variables.SPACES:
             if space['spaceID'] == spaceID:
@@ -210,12 +167,51 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
                 space['spaceFrame'] = Variables.licensePlateinSpaceInBase64
                 space['licensePlate'] = Variables.licensePlateBase64
                 
-
-        
         with open('storage/spaceInfo.txt', 'w') as space_views:
             json.dump(Variables.SPACES, space_views, indent=4)
 
-        return {"status":"done"}
+        return isLicensePlate
+
+
+def liveMode():
+    '''
+    SCAN the parking slot FOR VEHICLE
+    '''      
+
+    # print("started")       
+    poslist = get_space_coordinates()
+
+    Variables.SPACES = []
+    
+    Variables.TOTALSPACES = len(poslist)
+    # print('Found ',Variables.TOTALSPACES , "space")
+    for spaceID in range(Variables.TOTALSPACES):
+
+        obj = {
+            'spaceID':spaceID,
+            'spaceStatus':'vaccant',
+            'spaceFrame':'',
+            'licenseNumber':"",
+            'licensePlate':""
+        }
+
+        Variables.SPACES.append(obj)
+    
+    
+    with open('storage/spaceInfo.txt', 'w') as spaces:
+        json.dump(Variables.SPACES, spaces,indent=4)
+
+    for spaceID, pos in enumerate(poslist):
+        SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
+        pts = np.array(SpaceCoordinates, np.int32)
+        x, y, w, h = cv2.boundingRect(pts)
+        isLicensePlate = getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h)
+
+    if IS_PI_CAMERA_SOURCE:
+        update_pilot()
+        
+    if isLicensePlate:
+        update_server()
 
 
 def get_monitoring_spaces():
@@ -229,14 +225,15 @@ def get_monitoring_spaces():
     Variables.SPACES = []
     
     Variables.TOTALSPACES = len(poslist)
-    print('Found ',Variables.TOTALSPACES , "space")
+    # print('Found ',Variables.TOTALSPACES , "space")
     for spaceID in range(Variables.TOTALSPACES):
 
         obj = {
             'spaceID':spaceID,
             'spaceStatus':'vaccant',
             'spaceFrame':'',
-            'licenseNumber':""
+            'licenseNumber':"",
+            'licensePlate':""
         }
 
         Variables.SPACES.append(obj)
@@ -253,15 +250,9 @@ def get_monitoring_spaces():
 
         getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h)
 
-    # if len(Variables.space_coordinate_list) > 0:
-    #     with Pool(initializer=django.setup) as pool: 
-    #         pool.map(getSpaceMonitorWithLicensePlateDectection, Variables.space_coordinate_list)
-
-    # print("space info", get_space_info())
     if IS_PI_CAMERA_SOURCE:
         update_pilot()
-        
-    update_server()
+    # update_server()
     return get_space_info()
 
 

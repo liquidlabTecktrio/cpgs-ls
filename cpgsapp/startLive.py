@@ -8,7 +8,6 @@ from pathlib import Path
 import requests
 
 
-
 def wait_for_server(host='0.0.0.0', port=8000):
     """Wait until the server is listening on the specified port."""
     while True:

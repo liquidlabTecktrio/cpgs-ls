@@ -1,23 +1,49 @@
 import threading
+import time
 from rest_framework.response import Response
 from django.shortcuts import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK, HTTP_406_NOT_ACCEPTABLE
+from django.views.decorators.csrf import csrf_exempt
+from cpgsapp.controllers.CameraViewController import capture, get_camera_view_with_space_coordinates, get_monitoring_spaces, liveMode
+from cpgsapp.controllers.FileSystemContoller import change_mode_to_config, change_mode_to_live, clear_space_coordinates, get_mode_info, get_space_coordinates, get_space_info, save_space_coordinates
 
-from cpgsapp.controllers.CameraViewController import capture, get_camera_view_with_space_coordinates, get_monitoring_spaces
-from cpgsapp.controllers.FileSystemContoller import clear_space_coordinates, get_space_coordinates, get_space_info, save_space_coordinates
-
+def ModeMonitor():
+    while True:
+        time.sleep(2)
+        mode = get_mode_info()
+        if mode == "live":
+            liveMode()
+        else:
+            pass
 
 def initiate(req):
     ShootCameraThread = threading.Thread(target=capture)
     ShootCameraThread.start()
+    ModeMonitorThread = threading.Thread(target=ModeMonitor())
+    ModeMonitorThread.start()
+
     return HttpResponse("")
+
+
+class ModeHandler(APIView):
+    def post(self,req):
+        islive = req.data['islive']
+        if islive:change_mode_to_live()
+        else :change_mode_to_config()
+
+        mode = get_mode_info()
+        return Response({'data':mode},status=HTTP_200_OK)
+    
+    def get(self,req):
+        mode = get_mode_info()
+        return Response({'data':mode},status=HTTP_200_OK)
 
 # Handles Network related tasks
 class NetworkHandler(APIView):
     def post(self, req):
         task, data  = req.data['task'], req.data['data']
-        print(task, data)
+        # print(task, data)
         return Response(status=HTTP_200_OK)
     def get(self, req):
         return Response(status=HTTP_200_OK)
@@ -26,7 +52,7 @@ class NetworkHandler(APIView):
 class LiveStreamHandler(APIView):
     def post(self, req):
         task, data  = req.data['task'], req.data['data']
-        print(task, data)
+        # print(task, data)
         return Response(status=HTTP_200_OK)
     def get(self, req):
         return Response(status=HTTP_200_OK)
@@ -35,13 +61,14 @@ class LiveStreamHandler(APIView):
 class AccountHandler(APIView):
     def post(self, req):
         task, data  = req.data['task'], req.data['data']
-        print(task, data)
+        # print(task, data)
         return Response(status=HTTP_200_OK)
     def get(self, req):
         return Response(status=HTTP_200_OK)
 
 # Handle Monitoring space related tasks
 class MonitorHandler(APIView):
+    @csrf_exempt
     def post(self, req):
         
         if 'task' not in req.data:

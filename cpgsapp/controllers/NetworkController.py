@@ -27,7 +27,7 @@ def update_server():
     }
 
 
-    print(sd, "------------")
+    # print(sd, "------------")
     timestamp = ""
     device_id = 20001
     mac_addr = "SDF34:34DFS:L#43:DF"
@@ -40,14 +40,13 @@ def update_server():
     Sends the slotData to the server in UDP protocol
     '''
     # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-    slotData = {
-    "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-    }
+   
         
     # try:
     # url = MAIN_SERVER_IP
     # requests.post(url, json=slotData)
     # message = spaceInfo
+    print(str(dataToSend), "----------")
     bytesToSend = str(dataToSend).encode()
     UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))

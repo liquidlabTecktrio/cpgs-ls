@@ -14,6 +14,23 @@ def get_space_info():
         SPACES = json.load(spaces)
     return SPACES
 
+
+def get_mode_info():
+    with open('storage/mode.txt','r') as modeData:
+        mode = modeData.read()
+    return mode
+
+def change_mode_to_live():
+    with open('storage/mode.txt','w') as modeData:
+        modeData.write("live")
+
+def change_mode_to_config():
+    with open('storage/mode.txt','w') as modeData:
+        modeData.write("config")
+
+
+    # print(modeData)
+    
 # def get_space_info_for_client():
 #     with open('spaceDataForClient.txt','r') as space_views:
 #         SPACES = json.load(space_views)

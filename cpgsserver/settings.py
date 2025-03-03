@@ -132,8 +132,7 @@ STATIC_ROOT = 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Development React frontend
-    "https://your-react-frontend.com",  # Production React frontend
+    "http://localhost:8000", # Production React frontend
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -141,6 +140,5 @@ CORS_ALLOW_ALL_ORIGINS = True
 MAIN_SERVER_IP = '192.168.1.4'
 MAIN_SERVER_PORT = 20108
 
-# MAIN_SERVER_PORT = 8000
 # INPUT CAMERA SOURCE
 IS_PI_CAMERA_SOURCE = True
