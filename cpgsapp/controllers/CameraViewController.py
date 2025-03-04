@@ -161,6 +161,8 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
 
         for space in Variables.SPACES:
             if space['spaceID'] == spaceID:
+                Variables.licensePlateBase64 = ""
+                # print('inside', isLicensePlate)
                 if isLicensePlate:
                     Variables.licensePlateBase64 = image_to_base64(Variables.licensePlate)
                     space['spaceStatus'] = "occupied"
@@ -209,7 +211,7 @@ def liveMode():
 
     if IS_PI_CAMERA_SOURCE:
         update_pilot()
-        
+
     if isLicensePlate:
         update_server()
 
@@ -238,7 +240,9 @@ def get_monitoring_spaces():
 
         Variables.SPACES.append(obj)
     
-    
+    # previous values
+    Variables.LAST_SPACES = get_space_info()
+    # new values
     with open('storage/spaceInfo.txt', 'w') as spaces:
         json.dump(Variables.SPACES, spaces,indent=4)
 
@@ -248,11 +252,12 @@ def get_monitoring_spaces():
         x, y, w, h = cv2.boundingRect(pts)
         # Variables.space_coordinate_list.append((spaceID,x,y,w,h))
 
-        getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h)
+        isLicensePlate = getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h)
 
-    if IS_PI_CAMERA_SOURCE:
-        update_pilot()
-    # update_server()
+        if IS_PI_CAMERA_SOURCE:
+            update_pilot()
+
+    update_server()
     return get_space_info()
 
 

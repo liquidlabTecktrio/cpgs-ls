@@ -9,55 +9,45 @@ from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
 from cpgsserver.settings import MAIN_SERVER_IP, MAIN_SERVER_PORT
+from storage import Variables
 
 
 
 
 def update_server():
 
+    currentSpacesInfo = get_space_info()
+    lastSpacesInfo = Variables.LAST_SPACES
+
+    indexThatchanged = 0
+    isChange = False
+    # status = 'unknown'
+
+    for space in range(Variables.TOTALSPACES):
+        if currentSpacesInfo[space]['spaceStatus'] != lastSpacesInfo[space]['spaceStatus']:
+            indexThatchanged = space
+            isChange=True
+
+
+    if isChange:
+        sd = currentSpacesInfo[indexThatchanged]
+
+        print(" changes found in space index", indexThatchanged)
+
+        dataToSend = {
+        "spaceID" : sd['spaceID'], 
+        "spaceStatus" : sd['spaceStatus'], 
+        "licensePlate" : sd['licensePlate']
+        }
+
+
+        bytesToSend = str(dataToSend).encode()
+        UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
+        print('Updated to MS')
+
     
-    spaceInfo = get_space_info()
-    sd = spaceInfo[0]
-
-    dataToSend = {
-    "spaceID" : sd['spaceID'], 
-    "spaceStatus" : sd['spaceStatus'], 
-    "licenseNumber" : sd['licenseNumber'], 
-    "licensePlate" : sd['licensePlate']
-    }
-
-
-    # print(sd, "------------")
-    timestamp = ""
-    device_id = 20001
-    mac_addr = "SDF34:34DFS:L#43:DF"
-    ip_address = "192.168.1.25"
-    ssid = "CPGSWIFI"
-    device_mode = "LIVE"
-    licenseNumber = "kl23f345"
-    space_id = 1003
-    '''
-    Sends the slotData to the server in UDP protocol
-    '''
-    # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-   
-        
-    # try:
-    # url = MAIN_SERVER_IP
-    # requests.post(url, json=slotData)
-    # message = spaceInfo
-    print(str(dataToSend), "----------")
-    bytesToSend = str(dataToSend).encode()
-    UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
-    print('Updated to MS')
-
-    # except Exception as e:
-    #     print(e)
-    
-    
-def change_hostname(data):
-        new_hostname = data['new_hostname']
+def change_hostname(new_hostname):
         with open('/etc/hostname', 'w') as f:
             f.write(new_hostname + '\n')
         with open('/etc/hosts', 'r') as f:
@@ -93,48 +83,17 @@ def set_dynamic_ip(data):
 # @sync_to_async
 def get_network_settings():
     currentNetworkSettings = NetworkSettings.objects.first()
-    print(currentNetworkSettings)
     serialized_settings = NetworkSettingsSerializer(currentNetworkSettings)
     return serialized_settings.data
 
-# def network_handler():
-#     spaceInfo = get_space_info()
-#     timestamp = ""
-#     device_id = 20001
-#     mac_addr = "SDF34:34DFS:L#43:DF"
-#     ip_address = "192.168.1.25"
-#     ssid = "CPGSWIFI"
-#     device_mode = "LIVE"
-#     licenseNumber = "kl23f345"
-#     space_id = 1003
-#     '''
-#     Sends the slotData to the server in UDP protocol
-#     '''
-#     # slotData = f'{timestamp}:{device_id}:{mac_addr}:{space_id}:{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-#     slotData = {
-#     "data":f'{timestamp}-{device_id}-{mac_addr}-{space_id}-{ip_address}:{ssid}:{licenseNumber}:{device_mode}'
-#     }
-        
-#     # try:
-#     #     url = MAIN_SERVER_IP
-#     #     requests.post(url, json=slotData)
-#     #     # UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-#     #     # UDPClientSocket.sendto(bytesToSend, serverSocketAddress)
-#     print('Updated to MS')
-
-def saveNetworkSetting():
-    newnetworksettings = req.get('data')
-    print(newnetworksettings)
-
+def saveNetworkSetting(newnetworksettings):
     command = f"""
     nmcli con modify $(nmcli -g UUID con show --active | head -n 1) \
     ipv4.method manual \
-    ipv4.addresses {newnetworksettings['ipv4_address']}/24 \
-    ipv4.gateway {newnetworksettings['gateway_address']} \
+    ipv4.addresses {newnetworksettings.ipv4_address}/24 \
+    ipv4.gateway {newnetworksettings.gateway_address} \
     ipv4.dns "8.8.8.8 8.8.4.4"
     """
-
-    NetworkSettings.objects.update(ipv4_address=newnetworksettings['ipv4_address'], gateway_address=newnetworksettings['gateway_address'])
 
     # Run the command with sudo
     subprocess.run(["sudo", "bash", "-c", command], capture_output=True, text=True)
@@ -164,3 +123,21 @@ def saveNetworkSetting():
         capture_output=True,
         text=True
     )
+
+
+def connect_to_wifi(ssid, password):
+    try:
+        # Connect to the WiFi
+        connect_command = f'nmcli dev wifi connect "{ssid}" password "{password}"'
+        subprocess.run(connect_command, shell=True, check=True, text=True, capture_output=True)
+        print(f"Connected to WiFi: {ssid}")
+
+        # Set autoconnect to ensure it connects after reboot
+        autoconnect_command = f'nmcli connection modify "{ssid}" connection.autoconnect yes'
+        subprocess.run(autoconnect_command, shell=True, check=True, text=True, capture_output=True)
+        print(f"Enabled autoconnect for: {ssid}")
+
+    except subprocess.CalledProcessError as e:
+        print("Error:", e.stderr)
+
+# Example usage:

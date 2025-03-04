@@ -22,7 +22,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 # Endpoints
 urlpatterns = [
-    # path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
     path('network_handler', views.NetworkHandler.as_view()),
     # path('live_stream_handler', views.LiveStreamHandler.as_view()),
     path('account_handler', views.AccountHandler.as_view()),

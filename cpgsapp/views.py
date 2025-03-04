@@ -2,6 +2,10 @@ import threading
 import time
 from rest_framework.response import Response
 from django.shortcuts import HttpResponse
+
+from cpgsapp.controllers.NetworkController import change_hostname, connect_to_wifi, get_network_settings, saveNetworkSetting, set_dynamic_ip, set_static_ip
+from cpgsapp.serializers import NetworkSettingsSerializer
+from .models import NetworkSettings
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK, HTTP_406_NOT_ACCEPTABLE
 from django.views.decorators.csrf import csrf_exempt
@@ -42,11 +46,40 @@ class ModeHandler(APIView):
 # Handles Network related tasks
 class NetworkHandler(APIView):
     def post(self, req):
-        task, data  = req.data['task'], req.data['data']
+        print(req.data)
+
+
+
+        networkSettings = NetworkSettings.objects.all()[0]
+        
+        saveNetworkSetting(networkSettings)
+        networkSettings.ipv4_address = req.data['ipv4_address']
+        networkSettings.gateway_address=req.data['gateway_address']
+
+        connect_to_wifi(req.data['ap_ssid'],req.data['ap_password'])
+
+        networkSettings.ap_ssid=req.data['ap_ssid']
+        networkSettings.ap_password=req.data['ap_password']
+        networkSettings.server_ip=req.data['server_ip']
+        networkSettings.server_port=req.data['server_port']
+        networkSettings.subnet_mask=req.data['subnet_mask']
+
+        if req.data['ip_type'] == 'static':
+            set_static_ip()
+        if req.data['ip_type'] == 'dynamic':
+            set_dynamic_ip()
+        networkSettings.ip_type=req.data['ip_type']
+
+        change_hostname(req.data['host_name'])
+        networkSettings.host_name=req.data['host_name']
+
+        networkSettings.save()
         # print(task, data)
-        return Response(status=HTTP_200_OK)
+        return Response({"data":'reload'},status=HTTP_200_OK)
+    
     def get(self, req):
-        return Response(status=HTTP_200_OK)
+    
+        return Response({'data':get_network_settings()},status=HTTP_200_OK)
 
 # Handle Live Stream Related Tasks
 class LiveStreamHandler(APIView):
