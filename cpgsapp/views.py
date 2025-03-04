@@ -46,35 +46,36 @@ class ModeHandler(APIView):
 # Handles Network related tasks
 class NetworkHandler(APIView):
     def post(self, req):
-        print(req.data)
-
-
-
+        task = req.data['task']
+        data = req.data['data']
+        # print(req.data, task)
         networkSettings = NetworkSettings.objects.all()[0]
-        
-        saveNetworkSetting(networkSettings)
-        networkSettings.ipv4_address = req.data['ipv4_address']
-        networkSettings.gateway_address=req.data['gateway_address']
 
-        connect_to_wifi(req.data['ap_ssid'],req.data['ap_password'])
+        if task == "iptype":
+            # saveNetworkSetting(networkSettings)
+            networkSettings.ipv4_address = data['ipv4_address']
+            networkSettings.gateway_address=data['gateway_address']
+            networkSettings.subnet_mask=data['subnet_mask']
+            networkSettings.ip_type=data['ip_type']
+            if req.data['ip_type'] == 'static':
+                set_static_ip()
+            if req.data['ip_type'] == 'dynamic':
+                set_dynamic_ip()
 
-        networkSettings.ap_ssid=req.data['ap_ssid']
-        networkSettings.ap_password=req.data['ap_password']
-        networkSettings.server_ip=req.data['server_ip']
-        networkSettings.server_port=req.data['server_port']
-        networkSettings.subnet_mask=req.data['subnet_mask']
+        elif task == 'accesspoint':
+            connect_to_wifi(data['ap_ssid'],data['ap_password'])
+            networkSettings.ap_ssid=data['ap_ssid']
+            networkSettings.ap_password=data['ap_password']
 
-        if req.data['ip_type'] == 'static':
-            set_static_ip()
-        if req.data['ip_type'] == 'dynamic':
-            set_dynamic_ip()
-        networkSettings.ip_type=req.data['ip_type']
+        elif task == 'server':
+            networkSettings.server_ip=data['server_ip']
+            networkSettings.server_port=data['server_port']
 
-        change_hostname(req.data['host_name'])
-        networkSettings.host_name=req.data['host_name']
+        elif task == 'visibility':
+            change_hostname(data['host_name'])
+            networkSettings.host_name=data['host_name']
 
         networkSettings.save()
-        # print(task, data)
         return Response({"data":'reload'},status=HTTP_200_OK)
     
     def get(self, req):

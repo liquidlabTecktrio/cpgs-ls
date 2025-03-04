@@ -46,10 +46,12 @@ def update_server():
         UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
         print('Updated to MS')
 
-    
 def change_hostname(new_hostname):
+    try:
+        # Update /etc/hostname
         with open('/etc/hostname', 'w') as f:
             f.write(new_hostname + '\n')
+        # Update /etc/hosts
         with open('/etc/hosts', 'r') as f:
             hosts_content = f.readlines()
         with open('/etc/hosts', 'w') as f:
@@ -57,8 +59,13 @@ def change_hostname(new_hostname):
                 if '127.0.1.1' in line:
                     line = f'127.0.1.1\t{new_hostname}\n'
                 f.write(line)
-        subprocess.run(['hostnamectl', 'set-hostname', new_hostname])
+        # Change system hostname using hostnamectl
+        subprocess.run(['sudo', 'hostnamectl', 'set-hostname', new_hostname], check=True)
+        print(f"Hostname successfully changed to {new_hostname}")
         return True
+    except Exception as e:
+        print(f"Error changing hostname: {e}")
+        return False
         
 def set_static_ip(data):
     connection_name = data['connection_name']
