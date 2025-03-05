@@ -134,12 +134,12 @@ def saveNetworkSetting(newnetworksettings):
 def connect_to_wifi(ssid, password):
     try:
         # Connect to the WiFi
-        connect_command = f'nmcli dev wifi connect "{ssid}" password "{password}"'
+        connect_command = f'sudo nmcli dev wifi connect "{ssid}" password "{password}"'
         subprocess.run(connect_command, shell=True, check=True, text=True, capture_output=True)
         print(f"Connected to WiFi: {ssid}")
 
         # Set autoconnect to ensure it connects after reboot
-        autoconnect_command = f'nmcli connection modify "{ssid}" connection.autoconnect yes'
+        autoconnect_command = f'sudo nmcli connection modify "{ssid}" connection.autoconnect yes'
         subprocess.run(autoconnect_command, shell=True, check=True, text=True, capture_output=True)
         print(f"Enabled autoconnect for: {ssid}")
 
