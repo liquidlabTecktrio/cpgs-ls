@@ -1,41 +1,49 @@
-
 # HardwareConfiguration controller
-
+# Importing functions
 import json
 from cpgsapp.controllers import FileSystemContoller
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
-from gpiozero import LED
 from storage import Variables
 
+# GPIO setup (only if running on a Raspberry Pi)
 if IS_PI_CAMERA_SOURCE:
-    GREENLIGHT = LED(2) 
-    REDLIGHT = LED(3) 
-    MODEBUTTON = LED(4) 
+    from gpiozero import LED
+    GREENLIGHT = LED(2)
+    REDLIGHT = LED(3)
+    MODEBUTTON = LED(4)
+else:
+    GREENLIGHT = REDLIGHT = None  # Avoid errors if running on non-RPi devices
 
-def get_threshold(data):
-    print('new thresh',data.threshold)
-    with open('config.json','rb') as file:
-        data = json.load(file)
-    return True, data
-
+# Function to set the pilot to green
 def set_pilot_to_green():
-    GREENLIGHT.off()
-    REDLIGHT.on()
+    """Turn on the green light and turn off the red light."""
+    if GREENLIGHT and REDLIGHT:
+        GREENLIGHT.off()
+        REDLIGHT.on()
 
+# Function to set the pilot to red
 def set_pilot_to_red():
-    GREENLIGHT.on()
-    REDLIGHT.off()
+    """Turn on the red light and turn off the green light."""
+    if GREENLIGHT and REDLIGHT:
+        GREENLIGHT.on()
+        GREENLIGHT.off()
 
+# Function to update pilot light based on space availability
 def update_pilot():
-    occupiedSpaceList = []
-    for space in FileSystemContoller.get_space_info():
-        if space['spaceStatus']=='occupied':
-            occupiedSpaceList.append(space)
-            NoOfOccupiedSpaces = len(occupiedSpaceList)
-            AvailableVaccantSpaces = Variables.TOTALSPACES - NoOfOccupiedSpaces
-            if AvailableVaccantSpaces == 0:
-                print('Setting Pilot to Red')
-                set_pilot_to_red()
-        else:
-            print('Setting pilot to Green')
-            set_pilot_to_green()
+    """Update pilot light based on occupied spaces."""
+    spaces = FileSystemContoller.get_space_info()
+    
+    if not spaces:
+        print("No space data found. Defaulting to green light.")
+        set_pilot_to_green()
+        return
+
+    occupied_count = sum(1 for space in spaces if space.get('spaceStatus') == 'occupied')
+    available_spaces = Variables.TOTALSPACES - occupied_count
+
+    if available_spaces == 0:
+        print("Setting Pilot to Red (All spaces occupied)")
+        set_pilot_to_red()
+    else:
+        print("Setting Pilot to Green (Vacant spaces available)")
+        set_pilot_to_green()

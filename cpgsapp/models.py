@@ -1,21 +1,23 @@
 from django.db import models
 
-# Create your models here.
 class NetworkSettings(models.Model):
-    ipv4_address = models.TextField(default='192.168.0.254')
-    gateway_address = models.TextField(default="192.168.0.1")
-    ap_ssid = models.TextField(default="admin")
-    ap_password = models.TextField(default="admin@1234")
-    server_ip = models.TextField(default="192.168.1.100")
-    server_port = models.TextField(default="9090")
-    host_name = models.TextField(default="cpgs")
-    subnet_mask = models.TextField(default="255.255.255.1")
-    ip_type = models.TextField(choices=(('static','static'),('dynamic', 'dynamic')), default='static')
+    ipv4_address = models.GenericIPAddressField(default='192.168.0.254')
+    gateway_address = models.GenericIPAddressField(default='192.168.0.1')
+    subnet_mask = models.GenericIPAddressField(default='255.255.255.0')
 
-# class Spaces(models.Model):
-#     spaceID = models.CharField(max_length=10)
-#     licenseNumber = models.CharField(max_length=20)
-#     spaceStatus = models.CharField(max_length=30, choices=(('occupied','occupied'),('vaccant','vaccant')))
-#     entryTime = models.CharField(max_length=20)
-#     exitTime = models.CharField(max_length=20)
+    ap_ssid = models.CharField(max_length=100, default='admin')
+    ap_password = models.CharField(max_length=100, default='admin@1234')
 
+    server_ip = models.GenericIPAddressField(default='192.168.1.100')
+    server_port = models.PositiveIntegerField(default=9090)
+
+    host_name = models.CharField(max_length=50, default='cpgs')
+
+    ip_type = models.CharField(
+        max_length=10,
+        choices=[('static', 'Static'), ('dynamic', 'Dynamic')],
+        default='static'
+    )
+
+    def __str__(self):
+        return f"Network Settings ({self.host_name})"

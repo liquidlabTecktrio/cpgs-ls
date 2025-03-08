@@ -132,13 +132,14 @@ STATIC_ROOT = 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000", # Production React frontend
+    'http://localhost:3000',  # Allow only your frontend's origin
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True  # Allow credentials like cookies, authorization headers, etc.
+
 # MAIN_SERVER_IP = 'cpgs.liquidlab.in'
 MAIN_SERVER_IP = '192.168.1.4'
 MAIN_SERVER_PORT = 20108
 
 # INPUT CAMERA SOURCE
-IS_PI_CAMERA_SOURCE = True
+IS_PI_CAMERA_SOURCE = False

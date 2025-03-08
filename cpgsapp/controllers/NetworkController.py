@@ -1,152 +1,130 @@
-
 # Networking
+# Importing functions
 import socket
 import subprocess
-
-import requests
-
 from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
 from cpgsserver.settings import MAIN_SERVER_IP, MAIN_SERVER_PORT
 from storage import Variables
 
-
-
-
+# Function to update space status to the server
 def update_server():
+    """Detects changes in space status and updates the main server."""
+    current_spaces = get_space_info()
+    last_spaces = Variables.LAST_SPACES
 
-    currentSpacesInfo = get_space_info()
-    lastSpacesInfo = Variables.LAST_SPACES
+    changed_space = next(
+        (space for space in range(Variables.TOTALSPACES)
+         if current_spaces[space]['spaceStatus'] != last_spaces[space]['spaceStatus']),
+        None
+    )
 
-    indexThatchanged = 0
-    isChange = False
-    # status = 'unknown'
+    if changed_space is not None:
+        sd = current_spaces[changed_space]
+        print("Changes found in space index", changed_space)
 
-    for space in range(Variables.TOTALSPACES):
-        if currentSpacesInfo[space]['spaceStatus'] != lastSpacesInfo[space]['spaceStatus']:
-            indexThatchanged = space
-            isChange=True
-
-
-    if isChange:
-        sd = currentSpacesInfo[indexThatchanged]
-
-        print(" changes found in space index", indexThatchanged)
-
-        dataToSend = {
-        "spaceID" : sd['spaceID'], 
-        "spaceStatus" : sd['spaceStatus'], 
-        "licensePlate" : sd['licensePlate']
+        data_to_send = {
+            "spaceID": sd['spaceID'],
+            "spaceStatus": sd['spaceStatus'],
+            "licensePlate": sd['licensePlate']
         }
 
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_client:
+            udp_client.sendto(str(data_to_send).encode(), (MAIN_SERVER_IP, MAIN_SERVER_PORT))
+        print("Updated to MS")
 
-        bytesToSend = str(dataToSend).encode()
-        UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        UDPClientSocket.sendto(bytesToSend, (MAIN_SERVER_IP, MAIN_SERVER_PORT))
-        print('Updated to MS')
-import subprocess
-
+# Function to change the hostname
 def change_hostname(new_hostname):
+    """Updates the system hostname."""
     try:
-        # Update /etc/hostname
-        subprocess.run(['sudo', 'bash', '-c', f'echo "{new_hostname}" > /etc/hostname'], check=True)
-
-        # Update /etc/hosts
-        subprocess.run(['sudo', 'sed', '-i', f's/127.0.1.1.*/127.0.1.1\t{new_hostname}/', '/etc/hosts'], check=True)
-
-        # Change system hostname
-        subprocess.run(['sudo', 'hostnamectl', 'set-hostname', new_hostname], check=True)
-
+        commands = [
+            f'echo "{new_hostname}" | sudo tee /etc/hostname',
+            f'sudo sed -i "s/127.0.1.1.*/127.0.1.1\t{new_hostname}/" /etc/hosts',
+            f'sudo hostnamectl set-hostname {new_hostname}'
+        ]
+        for cmd in commands:
+            subprocess.run(cmd, shell=True, check=True, text=True)
+        
         print(f"Hostname successfully changed to {new_hostname}")
         return True
-
-    except Exception as e:
+    except subprocess.CalledProcessError as e:
         print(f"Error changing hostname: {e}")
         return False
 
-        
+# Function to set a static IP
 def set_static_ip(data):
-    connection_name = data['connection_name']
-    static_ip = data['static_ip']
-    gateway_ip = data['gateway_ip']
-    dns_ip = data['dns_ip']
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.addresses', static_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.gateway', gateway_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.dns', dns_ip])
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.method', 'manual'])
-    subprocess.run(['nmcli', 'con', 'down', connection_name])
-    subprocess.run(['nmcli', 'con', 'up', connection_name])
-    return True
-
-def set_dynamic_ip(data):
-    connection_name = data['connection_name']
-    subprocess.run(['nmcli', 'con', 'modify', connection_name, 'ipv4.method', 'auto'])
-    subprocess.run(['nmcli', 'con', 'down', connection_name])
-    subprocess.run(['nmcli', 'con', 'up', connection_name])
-    return True
-
-# @sync_to_async
-def get_network_settings():
-    currentNetworkSettings = NetworkSettings.objects.first()
-    serialized_settings = NetworkSettingsSerializer(currentNetworkSettings)
-    return serialized_settings.data
-
-def saveNetworkSetting(newnetworksettings):
-    command = f"""
-    nmcli con modify $(nmcli -g UUID con show --active | head -n 1) \
-    ipv4.method manual \
-    ipv4.addresses {newnetworksettings.ipv4_address}/24 \
-    ipv4.gateway {newnetworksettings.gateway_address} \
-    ipv4.dns "8.8.8.8 8.8.4.4"
-    """
-
-    # Run the command with sudo
-    subprocess.run(["sudo", "bash", "-c", command], capture_output=True, text=True)
-    connection_name = "preconfigured"
-
-
-    # Bring the connection down
-    subprocess.run(
-        ["sudo", "nmcli", "connection", "down", connection_name],
-        check=True,
-        capture_output=True,
-        text=True
-    )
-
-    # Bring the connection up
-    subprocess.run(
-        ["sudo", "nmcli", "connection", "up", connection_name],
-        check=True,
-        capture_output=True,
-        text=True
-    )
-
-        # Bring the connection up
-    subprocess.run(
-        ["sudo", "reboot", "now"],
-        check=True,
-        capture_output=True,
-        text=True
-    )
-
-
-def connect_to_wifi(ssid, password):
+    """Configures a static IP address."""
     try:
-        # Scan for new networks
-        subprocess.run('sudo nmcli device wifi rescan', shell=True, check=True, text=True, capture_output=True)
-        
-        # Connect to the WiFi
-        connect_command = f'sudo nmcli dev wifi connect "{ssid}" password "{password}"'
-        subprocess.run(connect_command, shell=True, check=True, text=True, capture_output=True)
-        print(f"Connected to WiFi: {ssid}")
+        nmcli_commands = [
+            f"nmcli con modify {data['connection_name']} ipv4.addresses {data['static_ip']}",
+            f"nmcli con modify {data['connection_name']} ipv4.gateway {data['gateway_ip']}",
+            f"nmcli con modify {data['connection_name']} ipv4.dns {data['dns_ip']}",
+            f"nmcli con modify {data['connection_name']} ipv4.method manual",
+            f"nmcli con down {data['connection_name']}",
+            f"nmcli con up {data['connection_name']}"
+        ]
+        for cmd in nmcli_commands:
+            subprocess.run(cmd, shell=True, check=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error setting static IP: {e}")
+        return False
 
-        # Set autoconnect to ensure it connects after reboot
-        autoconnect_command = f'sudo nmcli connection modify "{ssid}" connection.autoconnect yes'
-        subprocess.run(autoconnect_command, shell=True, check=True, text=True, capture_output=True)
-        print(f"Enabled autoconnect for: {ssid}")
+# Function to set a dynamic IP
+def set_dynamic_ip(data):
+    """Configures a dynamic IP address."""
+    try:
+        nmcli_commands = [
+            f"nmcli con modify {data['connection_name']} ipv4.method auto",
+            f"nmcli con down {data['connection_name']}",
+            f"nmcli con up {data['connection_name']}"
+        ]
+        for cmd in nmcli_commands:
+            subprocess.run(cmd, shell=True, check=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error setting dynamic IP: {e}")
+        return False
+
+# Function to get network settings
+def get_network_settings():
+    """Retrieves the current network settings."""
+    settings = NetworkSettings.objects.first()
+    return NetworkSettingsSerializer(settings).data if settings else {}
+
+# Function to save network settings
+def saveNetworkSetting(new_settings):
+    """Saves new network settings and applies them."""
+    try:
+        command = f"""
+        nmcli con modify $(nmcli -g UUID con show --active | head -n 1) \
+        ipv4.method manual \
+        ipv4.addresses {new_settings.ipv4_address}/24 \
+        ipv4.gateway {new_settings.gateway_address} \
+        ipv4.dns "8.8.8.8 8.8.4.4"
+        """
+        subprocess.run(["sudo", "bash", "-c", command], check=True, text=True)
+
+        connection_name = "preconfigured"
+        subprocess.run(["sudo", "nmcli", "connection", "down", connection_name], check=True, text=True)
+        subprocess.run(["sudo", "nmcli", "connection", "up", connection_name], check=True, text=True)
+        subprocess.run(["sudo", "reboot", "now"], check=True, text=True)
 
     except subprocess.CalledProcessError as e:
-        print("Error:", e.stderr)
+        print(f"Error saving network settings: {e}")
 
-# Example usage:
+# Function to connect to a WiFi network
+def connect_to_wifi(ssid, password):
+    """Connects to a WiFi network and enables autoconnect."""
+    try:
+        nmcli_commands = [
+            f'nmcli dev wifi connect "{ssid}" password "{password}"',
+            f'nmcli connection modify "{ssid}" connection.autoconnect yes'
+        ]
+        for cmd in nmcli_commands:
+            subprocess.run(cmd, shell=True, check=True, text=True)
+        
+        print(f"Connected to WiFi: {ssid}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error connecting to WiFi: {e}")
