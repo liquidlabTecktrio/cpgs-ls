@@ -4,6 +4,7 @@ coordinates = []
 cap = None
 licensePlate = ""
 SPACES = []
+LAST_SPACES = []
 licensePlateinSpace =""
 licensePlateinSpaceInBase64 = ""
 licensePlateBase64 = ""
