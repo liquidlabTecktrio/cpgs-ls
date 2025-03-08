@@ -13,15 +13,21 @@ def save_image(filename, image):
         file.write(buffer.tobytes())
     return True
 
-# Function to get space info
+
 def get_space_info():
     """Retrieve space information from a file."""
     file_path = f'{STORAGE_PATH}spaceInfo.txt'
+    
     if not os.path.exists(file_path):
-        return {}
+        return {}  # Return an empty dict if file does not exist
 
     with open(file_path, 'r') as spaces:
-        return json.load(spaces)
+        try:
+            return json.load(spaces)  # Try parsing JSON
+        except json.JSONDecodeError as e:
+            print(f"Error loading JSON: {e}")
+            return {}  # Return an empty dictionary instead of crashing
+
 
 # Function to get current mode (live/config)
 def get_mode_info():
