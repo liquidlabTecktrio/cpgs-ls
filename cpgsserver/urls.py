@@ -1,3 +1,8 @@
+# Developed By Tecktrio At Liquidlab Infosystems
+# Project: Routes 
+# Version: 1.0
+# Date: 2025-03-08
+# Description: Endpoints/ routes for the server where devices may hit
 
 from django.contrib import admin
 from django.urls import path

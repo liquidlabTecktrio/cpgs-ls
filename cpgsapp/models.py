@@ -1,3 +1,9 @@
+# Developed By Tecktrio At Liquidlab Infosystems
+# Project: Models
+# Version: 1.0
+# Date: 2025-03-08
+# Description: Database models fields or schema
+
 from django.db import models
 
 class NetworkSettings(models.Model):
@@ -21,3 +27,12 @@ class NetworkSettings(models.Model):
 
     def __str__(self):
         return f"Network Settings ({self.host_name})"
+
+
+class Account(models.Model):
+    username = models.CharField(max_length=100,default="admin")
+    password = models.CharField(max_length=100,default="admin")
+
+    def __str__(self):
+        return f"Network Settings ({self.username})"
+
