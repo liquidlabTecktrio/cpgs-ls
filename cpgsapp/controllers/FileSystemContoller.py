@@ -20,20 +20,20 @@ def save_image(filename, image):
 
 
 def get_space_info():
-    # try:
-        with open("storage/spaceinfo.txt", "r") as spaces:
+    try:
+        with open("storage/spaceInfo.txt", "r") as spaces:
             content = spaces.read().strip()
             if not content:
                 print("Warning: File is empty")
                 return {}  # Return a default value
             SPACES = json.loads(content)
             return SPACES
-    # except json.JSONDecodeError as e:
-    #     print(f"JSON error: {e}")
-    #     return {}  # Fallback to avoid crashing
-    # except FileNotFoundError:
-    #     print("File not found")
-    #     return {}
+    except json.JSONDecodeError as e:
+        print(f"JSON error: {e}")
+        return {}  # Fallback to avoid crashing
+    except FileNotFoundError:
+        print("File not found")
+        return {}
 
 
 # Function to get to know which mode is being used (live/config)
