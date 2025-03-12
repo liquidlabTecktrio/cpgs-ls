@@ -6,26 +6,17 @@
 
 #Importing Functions
 import json
-import os
-import shutil
-import tempfile
 import cv2
 from storage import Variables
 
 
 # Function to save the image 
 def save_image(filename, image):
-    """Save an image safely with basic error handling."""
-    try:
-        os.makedirs("storage", exist_ok=True)
-        file_path = os.path.join("storage", f"{filename}.jpg")
-        with tempfile.NamedTemporaryFile(delete=False, dir="storage") as tmp:
-            if not cv2.imwrite(tmp.name, image):
-                raise Exception("Failed to write image")
-            shutil.move(tmp.name, file_path)
-        return True, f"Image saved to {file_path}"
-    except Exception as e:
-        return False, f"Error: {str(e)}"
+    _, buffer = cv2.imencode('.jpg', image)
+    image_bytes = buffer.tobytes() 
+    with open(f'storage/{filename}.jpg','wb') as file:
+        file.write(image_bytes)
+    return True
 
 
 def get_space_info():
