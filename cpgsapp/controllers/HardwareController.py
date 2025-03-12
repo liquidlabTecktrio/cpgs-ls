@@ -42,15 +42,16 @@ def set_pilot_to_red():
 def update_pilot():
     """Update pilot light based on occupied spaces."""
     spaces = FileSystemContoller.get_space_info()
-    if not spaces:
-        print("No space data found. Defaulting to green light.")
-        set_pilot_to_green()
-        return
-    occupied_count = sum(1 for space in spaces if space.get('spaceStatus') == 'occupied')
-    available_spaces = Variables.TOTALSPACES - occupied_count
-    if available_spaces == 0:
-        print("Setting Pilot to Red (All spaces occupied)")
-        set_pilot_to_red()
-    else:
-        print("Setting Pilot to Green (Vacant spaces available)")
-        set_pilot_to_green()
+    if spaces != {}:
+        if not spaces:
+            print("No space data found. Defaulting to green light.")
+            set_pilot_to_green()
+            return
+        occupied_count = sum(1 for space in spaces if space.get('spaceStatus') == 'occupied')
+        available_spaces = Variables.TOTALSPACES - occupied_count
+        if available_spaces == 0:
+            print("Setting Pilot to Red (All spaces occupied)")
+            set_pilot_to_red()
+        else:
+            print("Setting Pilot to Green (Vacant spaces available)")
+            set_pilot_to_green()
