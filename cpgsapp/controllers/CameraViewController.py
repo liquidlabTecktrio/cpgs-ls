@@ -132,7 +132,7 @@ def get_camera_view_with_space_coordinates():
 
 #Function called to detect license plate
 def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
-        camera_view = cv2.imread("storage/camera_view.jpg")
+        camera_view = load_camera_view()
         space_view = camera_view[y:y+h, x:x+w]
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
