@@ -9,6 +9,7 @@ import threading
 import time
 from rest_framework.response import Response
 from django.shortcuts import HttpResponse
+from cpgsapp.controllers.HardwareController import RebootSystem
 from cpgsapp.controllers.NetworkController import (
     change_hostname, connect_to_wifi, get_network_settings, 
     set_dynamic_ip, set_static_ip
@@ -42,7 +43,7 @@ def ValidateUser(req):
     else:
         return False
     
-    
+
 # Function to monitor mode continuously
 def ModeMonitor():
     print("Starting Monitoring Mode")
@@ -59,6 +60,10 @@ def initiate(req):
     threading.Thread(target=capture).start()  # Start the camera capture thread
     threading.Thread(target=ModeMonitor).start()  # Start the mode monitor thread
     return HttpResponse("")
+
+# RebootSystem
+def reboot(req):
+    RebootSystem()
 
 
 # Handle Mode-related tasks

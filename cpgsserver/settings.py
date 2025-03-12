@@ -5,24 +5,15 @@
 # Description: Setting of the project
 
 
+# IMPORTING NECCESSARY MODULES
 from pathlib import Path
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure--zu(ol$h_h30$!vvoa)-f))s-_7rm@x(+%1$v*#4yq5(5)2m1l'
-
-# SECURITY WARNING: don't run with DEBUG turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = ["*"]
 
 
-# Application definition
-
+# INSTALLED APPS
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -36,6 +27,8 @@ INSTALLED_APPS = [
     'rest_framework'
 ]
 
+
+# MIDDLEWARES USED
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -48,8 +41,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+# ROOT URL
 ROOT_URLCONF = 'cpgsserver.urls'
 
+
+# FRONT END FILES AND CONFIGURATION
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -66,12 +63,14 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = 'cpgsserver.wsgi.application'
-ASGI_APPLICATION = 'cpgsserver.asgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# SERVER MODE
+WSGI_APPLICATION = 'cpgsserver.wsgi.application'
+
+
+
+# DATABASE CONNECTION 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -80,9 +79,7 @@ DATABASES = {
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
-
+# VALIDATION VALIDATORS
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -99,34 +96,25 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
-
+# INTERNATIONALISATION
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
+# STATIC CONFIGURATIONS
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     'build/static'
 ]
 STATIC_ROOT = 'staticfiles'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CORS SETTINGS
 CORS_ALLOW_ALL_ORIGINS = True
-# MAIN_SERVER_IP = 'cpgs.liquidlab.in'
 USER_VALIDATE_TOKEN = 'tokenoftrio'
-# INPUT CAMERA SOURCE
-IS_PI_CAMERA_SOURCE = True
+IS_PI_CAMERA_SOURCE = False
+
+
+# END OF PROGRAM
