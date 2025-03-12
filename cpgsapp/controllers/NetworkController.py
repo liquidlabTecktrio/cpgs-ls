@@ -17,24 +17,29 @@ from storage import Variables
 def update_server():
     """Detects changes in space status and updates the main server."""
     current_spaces = get_space_info()
-    last_spaces = Variables.LAST_SPACES
-    changed_space = next(
-        (space for space in range(Variables.TOTALSPACES)
-         if current_spaces[space]['spaceStatus'] != last_spaces[space]['spaceStatus']),
-        None
-    )
-    if changed_space is not None:
-        sd = current_spaces[changed_space]
-        print("Changes found in space index", changed_space)
-        data_to_send = {
-            "spaceID": sd['spaceID'],
-            "spaceStatus": sd['spaceStatus'],
-            "licensePlate": sd['licensePlate']
-        }
+    if current_spaces != {}:
         NetworkSetting = NetworkSettings.objects.first()
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_client:
-            udp_client.sendto(str(data_to_send).encode(), (NetworkSetting.server_ip, NetworkSetting.server_port))
-    print("Updating MS with IP ",NetworkSetting.server_ip," with ",NetworkSetting.server_port)
+        last_spaces = Variables.LAST_SPACES
+        changed_space = None
+
+        for space in range(Variables.TOTALSPACES):
+            if space in current_spaces and space in last_spaces:
+                if current_spaces[space]['spaceStatus'] != last_spaces[space]['spaceStatus']:
+                    changed_space = space
+                    break
+        if changed_space is not None:
+            sd = current_spaces[changed_space]
+            print("Changes found in space index", changed_space)
+            data_to_send = {
+                "spaceID": sd['spaceID'],
+                "spaceStatus": sd['spaceStatus'],
+                # "licensePlate": sd['licensePlate']
+            }
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_client:
+                udp_client.sendto(str(data_to_send).encode(), (NetworkSetting.server_ip, NetworkSetting.server_port))
+        print("Updating MS with IP ",NetworkSetting.server_ip," with ",NetworkSetting.server_port)
+
+
 
 # Function to change the hostname
 def change_hostname(new_hostname):

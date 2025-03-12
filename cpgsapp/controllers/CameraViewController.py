@@ -86,7 +86,7 @@ def capture():
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             else:
                 print("Failed to capture frame from PiCamera")
-                time.sleep(0.1)
+                time.sleep(0.5)
                 continue
         else:
             ret, frame = Variables.cap.read()
@@ -99,12 +99,22 @@ def capture():
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
-        time.sleep(0.1)  
-        
-    
+        time.sleep(1)  
+
+# LOAD CAMERA VIEW 
+def load_camera_view(max_attempts=2, delay=0.05):
+    for attempt in range(max_attempts):
+        camera_view = cv2.imread("storage/camera_view.jpg")
+        if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
+            return camera_view
+        print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
+        time.sleep(delay)  # Brief delay before retry
+    raise Exception("Failed to load camera_view.jpg after multiple attempts")
+
+
 # Function called for getting the camera view with space coordinates
 def get_camera_view_with_space_coordinates():
-    frame = cv2.imread("storage/camera_view.jpg")
+    frame = load_camera_view()
     with open('storage/coordinates.txt','r')as data:
         for space_coordinates in json.load(data):
                 for index in range (0,len(space_coordinates)-1):
@@ -122,7 +132,7 @@ def get_camera_view_with_space_coordinates():
 
 #Function called to detect license plate
 def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
-        camera_view = cv2.imread("storage/camera_view.jpg")  
+        camera_view = cv2.imread("storage/camera_view.jpg")
         space_view = camera_view[y:y+h, x:x+w]
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
@@ -198,7 +208,7 @@ def get_monitoring_spaces():
             update_pilot()
         if isLicensePlate:
             update_server()
-            
+
     return get_space_info()
 
 
