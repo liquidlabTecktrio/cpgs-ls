@@ -102,14 +102,14 @@ def capture():
         time.sleep(1)  
 
 # LOAD CAMERA VIEW 
-def load_camera_view(max_attempts=5, delay=0.05):
-    for attempt in range(max_attempts):
+def load_camera_view():
+    # for attempt in range(max_attempts):
         camera_view = cv2.imread("storage/camera_view.jpg")
         if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
             return camera_view
-        print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
-        time.sleep(delay)  # Brief delay before retry
-    raise Exception("Failed to load camera_view.jpg after multiple attempts")
+    #     print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
+    #     time.sleep(delay)  # Brief delay before retry
+    # raise Exception("Failed to load camera_view.jpg after multiple attempts")
 
 
 # Function called for getting the camera view with space coordinates
