@@ -41,9 +41,7 @@ def update_server():
 
 
 
-# Function to change the hostname
 def change_hostname(new_hostname):
-    """Updates the system hostname."""
     try:
         commands = [
             f'echo "{new_hostname}" | sudo tee /etc/hostname',
@@ -51,11 +49,16 @@ def change_hostname(new_hostname):
             f'sudo hostnamectl set-hostname {new_hostname}'
         ]
         for cmd in commands:
-            subprocess.run(cmd, shell=True, check=True, text=True)
+            result = subprocess.run(cmd, shell=True, check=True, text=True, capture_output=True)
+            print(f"Command: {cmd}")
+            print(f"Output: {result.stdout}")
+            print(f"Error (if any): {result.stderr}")
         print(f"Hostname successfully changed to {new_hostname}")
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error changing hostname: {e}")
+        print(f"Output: {e.output}")
+        print(f"Error: {e.stderr}")
         return False
 
 
