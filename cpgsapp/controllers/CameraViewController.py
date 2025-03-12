@@ -102,19 +102,28 @@ def capture():
         time.sleep(1)  
 
 # LOAD CAMERA VIEW 
-def load_camera_view():
-    # for attempt in range(max_attempts):
+def load_camera_view1(max_attempts=5, delay=0.05):
+    for attempt in range(max_attempts):
         camera_view = cv2.imread("storage/camera_view.jpg")
         if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
             return camera_view
-    #     print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
-    #     time.sleep(delay)  # Brief delay before retry
-    # raise Exception("Failed to load camera_view.jpg after multiple attempts")
+        print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
+        time.sleep(delay)  # Brief delay before retry
+    raise Exception("Failed to load camera_view.jpg after multiple attempts")
+# LOAD CAMERA VIEW 
+def load_camera_view2(max_attempts=5, delay=0.05):
+    for attempt in range(max_attempts):
+        camera_view = cv2.imread("storage/camera_view.jpg")
+        if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
+            return camera_view
+        print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
+        time.sleep(delay)  # Brief delay before retry
+    raise Exception("Failed to load camera_view.jpg after multiple attempts")
 
 
 # Function called for getting the camera view with space coordinates
 def get_camera_view_with_space_coordinates():
-    frame = load_camera_view()
+    frame = load_camera_view1()
     with open('storage/coordinates.txt','r')as data:
         for space_coordinates in json.load(data):
                 for index in range (0,len(space_coordinates)-1):
@@ -132,7 +141,7 @@ def get_camera_view_with_space_coordinates():
 
 #Function called to detect license plate
 def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
-        camera_view = load_camera_view()
+        camera_view = load_camera_view2()
         space_view = camera_view[y:y+h, x:x+w]
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
