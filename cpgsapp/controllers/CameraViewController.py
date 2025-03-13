@@ -11,7 +11,7 @@ import time
 import cv2
 import numpy as np
 from cpgsapp.controllers.FileSystemContoller import get_space_coordinates, get_space_info, save_image
-from cpgsapp.controllers.HardwareController import update_pilot
+from cpgsapp.controllers.HardwareController import free_camera_device, update_pilot
 from cpgsapp.controllers.NetworkController import update_server
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from storage import Variables
@@ -75,12 +75,15 @@ async def video_stream_for_calibrate():
         yield readyToSendFrame
 
 
+
 # Function called for capturing the frames
 def capture():
     """Synchronous capture function for threading or multiprocessing."""
+    
     print('Camera Started!')
     while True:
         if IS_PI_CAMERA_SOURCE:
+            free_camera_device()
             frame = Variables.cap.capture_array()
             if frame is not None:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
