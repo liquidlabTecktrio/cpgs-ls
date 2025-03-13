@@ -166,21 +166,10 @@ def connect_to_wifi(ssid, password):
         result = subprocess.run(connect_cmd, shell=True, check=True, text=True, capture_output=True)
         print(f"Connected to WiFi: {ssid}")
         
-        # Step 2: Find the UUID of the newly created connection
-        uuid_cmd = f'nmcli -t -f UUID,NAME con show | grep "{ssid}"'
-        uuid_result = subprocess.run(uuid_cmd, shell=True, check=True, text=True, capture_output=True)
-        output = uuid_result.stdout.strip()
-        
-        if output:
-            # Extract UUID from the output (format: UUID:SSID)
-            uuid = output.split(":")[0]
-            print(f"Found connection UUID: {uuid}")
-            
-            # Step 3: Modify the connection to enable autoconnect using the UUID
-            modify_cmd = f'sudo nmcli connection modify "{uuid}" connection.autoconnect yes'
-            subprocess.run(modify_cmd, shell=True, check=True, text=True)
-            print(f"Autoconnect enabled for {ssid} (UUID: {uuid})")
-        else:
-            print(f"Warning: Could not find connection profile for {ssid}. Autoconnect not set.")
+        # Step 3: Modify the connection to enable autoconnect using the UUID
+        modify_cmd = f'sudo nmcli connection modify "preconfigured" connection.autoconnect yes'
+        subprocess.run(modify_cmd, shell=True, check=True, text=True)
+        print(f"Autoconnect enabled for {ssid}")
+     
     except subprocess.CalledProcessError as e:
         print(f"Error connecting to WiFi: {e}")
