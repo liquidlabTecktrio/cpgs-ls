@@ -8,6 +8,7 @@
 # Importing functions
 import socket
 import subprocess
+import time
 from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
@@ -126,13 +127,43 @@ def saveNetworkSetting(new_settings):
         print(f"Error saving network settings: {e}")
 
 
-# Function to connect to a WiFi network
+# SCAN WIFI
+def scan_wifi():
+    """Scans for available WiFi networks and returns a list of SSIDs."""
+    try:
+        subprocess.run("sudo nmcli dev wifi rescan", shell=True, check=True, text=True)
+        time.sleep(2)
+        result = subprocess.run(
+            "nmcli -f SSID dev wifi list",
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        output_lines = result.stdout.strip().split('\n')[1:]
+        ssids = list(set(line.strip() for line in output_lines if line.strip()))
+        return ssids
+    except subprocess.CalledProcessError as e:
+        print(f"Error scanning WiFi networks: {e}")
+        return []
+
+
+
+# CONNEC TO THE WIFI
 def connect_to_wifi(ssid, password):
-    """Connects to a WiFi network and enables autoconnect."""
+    """Connects to a WiFi network and enables autoconnect after scanning."""
+    available_ssids = scan_wifi()
+    if not available_ssids:
+        print("No WiFi networks found or scanning failed.")
+        return 401
+    print(f"Available networks: {', '.join(available_ssids)}")
+    if ssid not in available_ssids:
+        print(f"Error: Network '{ssid}' not found in scan results.")
+        return 401
     try:
         nmcli_commands = [
-            f'nmcli dev wifi connect "{ssid}" password "{password}"',
-            f'nmcli connection modify "{ssid}" connection.autoconnect yes'
+            f'sudo nmcli dev wifi connect "{ssid}" password "{password}"',
+            f'sudo nmcli connection modify "{ssid}" connection.autoconnect yes'
         ]
         for cmd in nmcli_commands:
             subprocess.run(cmd, shell=True, check=True, text=True)

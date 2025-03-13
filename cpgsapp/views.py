@@ -18,7 +18,7 @@ from cpgsapp.serializers import AccountSerializer
 from cpgsserver.settings import USER_VALIDATE_TOKEN
 from .models import Account, NetworkSettings
 from rest_framework.views import APIView
-from rest_framework.status import HTTP_200_OK, HTTP_406_NOT_ACCEPTABLE, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK, HTTP_406_NOT_ACCEPTABLE, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
 from cpgsapp.controllers.CameraViewController import (
     capture, get_camera_view_with_space_coordinates, 
     get_monitoring_spaces, liveMode
@@ -105,7 +105,9 @@ class NetworkHandler(APIView):
                     set_dynamic_ip()
 
             elif task == 'accesspoint':
-                connect_to_wifi(data['ap_ssid'], data['ap_password'])
+                status = connect_to_wifi(data['ap_ssid'], data['ap_password'])
+                if status == 401:
+                    return Response({'status':"Wifi do not Exist"},status=HTTP_404_NOT_FOUND)
                 networkSettings.ap_ssid = data['ap_ssid']
                 networkSettings.ap_password = data['ap_password']
 
