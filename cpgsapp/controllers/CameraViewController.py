@@ -83,7 +83,6 @@ def capture():
     print('Camera Started!')
     while True:
         if IS_PI_CAMERA_SOURCE:
-            free_camera_device()
             frame = Variables.cap.capture_array()
             if frame is not None:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
