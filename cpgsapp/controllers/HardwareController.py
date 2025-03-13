@@ -8,7 +8,7 @@
 # Importing functions
 import json
 import subprocess
-from cpgsapp.controllers import FileSystemContoller
+from . import FileSystemContoller
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
 from storage import Variables
 
