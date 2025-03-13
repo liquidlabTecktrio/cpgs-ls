@@ -63,7 +63,9 @@ def initiate(req):
 
 # RebootSystem
 def reboot(req):
+    print('Rebooting...')
     RebootSystem()
+    return Response(status = HTTP_200_OK)
 
 
 # Handle Mode-related tasks
