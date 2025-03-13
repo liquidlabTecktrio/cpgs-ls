@@ -191,7 +191,7 @@ class MonitorHandler(APIView):
             if task == 'GET_MONITOR_VIEWS':
                 spaces = get_monitoring_spaces()
                 time.sleep(.2)
-                send_using_mqtt(spaces)
+                # send_using_mqtt(spaces)
                 return Response({'data': spaces}, status=HTTP_200_OK)
         else:
             return Response({"status":"Missing Authorization Token in body"},status=HTTP_401_UNAUTHORIZED)
