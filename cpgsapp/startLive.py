@@ -9,9 +9,13 @@ import socket
 import time
 import requests
 
+# from cpgsapp.controllers.HardwareController import free_camera_device
+
 """Wait until the server is listening on the specified port."""
 while True:
     try:
+
+        # free_camera_device()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1)
             s.connect(("0.0.0.0", 8000))

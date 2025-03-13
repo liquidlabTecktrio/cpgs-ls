@@ -173,3 +173,17 @@ def connect_to_wifi(ssid, password):
      
     except subprocess.CalledProcessError as e:
         print(f"Error connecting to WiFi: {e}")
+
+
+def send_using_mqtt(data):
+    # Define the command as a list
+    cmd = [
+        "mosquitto_pub",
+        "-h", "0.0.0.0",
+        "-p", "1883",
+        "-t", "monitor/stream",
+        "-m", f'{"test": "{data}"}'
+    ]
+
+    # Run the command
+    process = subprocess.run(cmd, capture_output=True, text=True)

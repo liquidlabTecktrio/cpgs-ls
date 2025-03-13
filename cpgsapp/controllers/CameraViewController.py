@@ -22,11 +22,11 @@ if IS_PI_CAMERA_SOURCE:
     Variables.cap = Picamera2()
     config = Variables.cap.create_preview_configuration(main={"size":(1280, 720)})
     Variables.cap.configure(config)
-    Variables.cap.set_controls({
-        "ExposureTime":20000,
-        "AnalogueGain":8.0,
-        "Brightness":0.5,
-    })
+    # Variables.cap.set_controls({
+    #     "ExposureTime":20000,
+    #     "AnalogueGain":8.0,
+    #     "Brightness":0.5,
+    # })
     Variables.cap.start()
 else: Variables.cap = cv2.VideoCapture(0)
 
@@ -108,7 +108,7 @@ def capture():
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
-        time.sleep(1)  
+        time.sleep(0.3)  
 
 # LOAD CAMERA VIEW 
 def load_camera_view(max_attempts=5, delay=0.05):
@@ -118,6 +118,7 @@ def load_camera_view(max_attempts=5, delay=0.05):
             return camera_view
         print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
         time.sleep(delay)  # Brief delay before retry
+  
     raise Exception("Failed to load camera_view.jpg after multiple attempts")
 
 
@@ -153,7 +154,7 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
                     space['spaceStatus'] = "occupied"
                 space['spaceFrame'] = Variables.licensePlateinSpaceInBase64
                 space['licensePlate'] = Variables.licensePlateBase64
-        with open('storage/spaceInfo.txt', 'w') as space_views:
+        with open('storage/spaceInfo.json', 'w') as space_views:
             json.dump(Variables.SPACES, space_views, indent=4)
         return isLicensePlate
 
@@ -175,7 +176,7 @@ def liveMode():
             'licensePlate':""
         }
         Variables.SPACES.append(obj)
-    with open('storage/spaceInfo.txt', 'w') as spaces:
+    with open('storage/spaceInfo.json', 'w') as spaces:
         json.dump(Variables.SPACES, spaces,indent=4)
     for spaceID, pos in enumerate(poslist):
         SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
@@ -206,7 +207,7 @@ def get_monitoring_spaces():
         }
         Variables.SPACES.append(obj)
     Variables.LAST_SPACES = get_space_info()
-    with open('storage/spaceInfo.txt', 'w') as spaces:
+    with open('storage/spaceInfo.json', 'w') as spaces:
         json.dump(Variables.SPACES, spaces,indent=4)
     for spaceID, pos in enumerate(poslist):
         SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])

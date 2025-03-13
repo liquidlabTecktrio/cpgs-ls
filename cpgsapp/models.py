@@ -14,6 +14,9 @@ class NetworkSettings(models.Model):
     ap_ssid = models.CharField(max_length=100, default='admin')
     ap_password = models.CharField(max_length=100, default='admin@1234')
 
+    default_ap_ssid = models.CharField(max_length=100, default='LiquidlabCPGSDefaultSSID')
+    default_ap_password = models.CharField(max_length=100, default='LiquidlabCPGS')
+
     server_ip = models.GenericIPAddressField(default='192.168.1.100')
     server_port = models.PositiveIntegerField(default=9090)
 

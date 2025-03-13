@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from django.shortcuts import HttpResponse
 from cpgsapp.controllers.HardwareController import RebootSystem
 from cpgsapp.controllers.NetworkController import (
-    change_hostname, connect_to_wifi, get_network_settings, 
+    change_hostname, connect_to_wifi, get_network_settings, send_using_mqtt, 
     set_dynamic_ip, set_static_ip
 )
 from cpgsapp.serializers import AccountSerializer
@@ -48,7 +48,7 @@ def ValidateUser(req):
 def ModeMonitor():
     print("Starting Monitoring Mode")
     while True:
-        time.sleep(2)
+        time.sleep(1)
         mode = get_mode_info()
         if mode == "live":
             liveMode()
@@ -176,7 +176,6 @@ class AccountHandler(APIView):
             return Response({"status":"User Do Not Exist"},status=HTTP_401_UNAUTHORIZED)
 
 
-
 # Handle Monitoring space related tasks
 class MonitorHandler(APIView):
     def post(self, req):
@@ -191,6 +190,8 @@ class MonitorHandler(APIView):
             
             if task == 'GET_MONITOR_VIEWS':
                 spaces = get_monitoring_spaces()
+                time.sleep(.2)
+                send_using_mqtt(spaces)
                 return Response({'data': spaces}, status=HTTP_200_OK)
         else:
             return Response({"status":"Missing Authorization Token in body"},status=HTTP_401_UNAUTHORIZED)
