@@ -20,6 +20,13 @@ from storage import Variables
 if IS_PI_CAMERA_SOURCE:
     from picamera2 import Picamera2
     Variables.cap = Picamera2()
+    config = Variables.cap.create_preview_configuration(main={"size":(1280, 720)})
+    Variables.cap.configure(config)
+    Variables.cap.set_controls({
+        "ExposureTime":20000,
+        "AnalogueGain":8.0,
+        "Brightness":0.5,
+    })
     Variables.cap.start()
 else: Variables.cap = cv2.VideoCapture(0)
 
