@@ -77,6 +77,8 @@ def dectect_license_plate(space):
         isLicensePlate = True 
         cv2.rectangle(space, (x, y), (x + w, y + h), (0, 255, 0), 2)  
         license_plate = space[y:y+h, x:x+w]
+    
+    space  = cv2.cvtColor(space, cv2.COLOR_RGB2GRAY)
     return space, license_plate, isLicensePlate
 
 
