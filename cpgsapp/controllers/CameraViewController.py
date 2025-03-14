@@ -103,31 +103,33 @@ async def video_stream_for_calibrate():
 
 
 # Function called for capturing the frames
+import cv2
+import time
+
 def capture():
-    """Synchronous capture function for threading or multiprocessing."""
-    
+    """Synchronous capture function optimized for performance."""
     print('Camera Started!')
     while True:
         if IS_PI_CAMERA_SOURCE:
             frame = Variables.cap.capture_array()
-            if frame is not None:
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            else:
+            if frame is None:
                 print("Failed to capture frame from PiCamera")
                 time.sleep(0.5)
                 continue
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         else:
             ret, frame = Variables.cap.read()
             if not ret:
                 print("Failed to capture frame from VideoCapture")
                 time.sleep(0.1)
                 continue
-        if frame is not None and frame.size > 0:  
-            frame = cv2.resize(frame, (1020,576 ), interpolation=cv2.INTER_AREA)
+        
+        if frame.size > 0:  # Simplified check
+            frame = cv2.resize(frame, (1020, 576), interpolation=cv2.INTER_NEAREST)
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
-        time.sleep(0.3)  
+        time.sleep(0.05)  # Reduced delay
 
 
 
