@@ -10,7 +10,7 @@ import json
 import time
 import cv2
 import numpy as np
-from cpgsapp.controllers.FileSystemContoller import get_space_coordinates, get_space_info, save_image
+from cpgsapp.controllers.FileSystemContoller import get_space_coordinates, get_space_info, save_image, update_space_info
 from cpgsapp.controllers.HardwareController import free_camera_device, update_pilot
 from cpgsapp.controllers.NetworkController import update_server
 from cpgsserver.settings import IS_PI_CAMERA_SOURCE
@@ -45,6 +45,23 @@ def image_to_base64(frame):
     except Exception as e:
         print(f"Error converting frame to base64: {str(e)}")
         return None
+    
+
+def image_to_rowbytes(frame):
+    try:
+        frame_contiguous = np.ascontiguousarray(frame)
+        success, encoded_img = cv2.imencode('.jpg', frame_contiguous)
+        if not success:
+            print("Failed to encode frame to JPEG")
+            return None
+        image_bytes = encoded_img.tobytes()
+        # base64_string = base64.b64encode(image_bytes).decode('utf-8')
+        # data_url = f"image_bytes"
+        return image_bytes
+    except Exception as e:
+        print(f"Error converting frame to base64: {str(e)}")
+        return None
+
 
 
 
@@ -146,16 +163,17 @@ def getSpaceMonitorWithLicensePlateDectection(spaceID, x, y, w, h ):
         space_view = camera_view[y:y+h, x:x+w]
         Variables.licensePlateinSpace, Variables.licensePlate, isLicensePlate =  dectect_license_plate(space_view)
         Variables.licensePlateinSpaceInBase64 = image_to_base64(Variables.licensePlateinSpace)
+        # Variables.licensePlateinSpaceInBase64 = image_to_rowbytes(Variables.licensePlateinSpace)
         for space in Variables.SPACES:
             if space['spaceID'] == spaceID:
                 Variables.licensePlateBase64 = ""
                 if isLicensePlate:
                     Variables.licensePlateBase64 = image_to_base64(Variables.licensePlate)
+                    # Variables.licensePlateBase64 = image_to_rowbytes(Variables.licensePlate)
                     space['spaceStatus'] = "occupied"
                 space['spaceFrame'] = Variables.licensePlateinSpaceInBase64
                 space['licensePlate'] = Variables.licensePlateBase64
-        with open('storage/spaceInfo.json', 'w') as space_views:
-            json.dump(Variables.SPACES, space_views, indent=4)
+        update_space_info(Variables.SPACES)
         return isLicensePlate
 
 
@@ -176,8 +194,8 @@ def liveMode():
             'licensePlate':""
         }
         Variables.SPACES.append(obj)
-    with open('storage/spaceInfo.json', 'w') as spaces:
-        json.dump(Variables.SPACES, spaces,indent=4)
+    update_space_info(Variables.SPACES)
+
     for spaceID, pos in enumerate(poslist):
         SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
         pts = np.array(SpaceCoordinates, np.int32)
@@ -206,9 +224,9 @@ def get_monitoring_spaces():
             'licensePlate':""
         }
         Variables.SPACES.append(obj)
-    Variables.LAST_SPACES = get_space_info()
-    with open('storage/spaceInfo.json', 'w') as spaces:
-        json.dump(Variables.SPACES, spaces,indent=4)
+    Variables.LAST_SPACES = get_space_info()        
+    update_space_info(Variables.SPACES)
+
     for spaceID, pos in enumerate(poslist):
         SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
         pts = np.array(SpaceCoordinates, np.int32)
