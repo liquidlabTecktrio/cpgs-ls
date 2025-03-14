@@ -9,7 +9,7 @@ import threading
 import time
 from rest_framework.response import Response
 from django.shortcuts import HttpResponse
-from cpgsapp.controllers.HardwareController import RebootSystem
+from cpgsapp.controllers.HardwareController import RebootSystem, free_camera_device
 from cpgsapp.controllers.NetworkController import (
     change_hostname, connect_to_wifi, get_network_settings, 
     set_dynamic_ip, set_static_ip
@@ -57,6 +57,7 @@ def ModeMonitor():
 # Function to initiate tasks
 def initiate(req):
     print('Initiating CPGS')
+    free_camera_device()
     threading.Thread(target=capture).start()  # Start the camera capture thread
     threading.Thread(target=ModeMonitor).start()  # Start the mode monitor thread
     return HttpResponse("")
