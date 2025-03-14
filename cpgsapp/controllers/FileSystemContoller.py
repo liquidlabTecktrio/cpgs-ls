@@ -6,66 +6,19 @@
 
 #Importing Functions
 import json
-import os
 import time
 import cv2
-import numpy as np
 from storage import Variables
 
 
 # Function to save the image 
 def save_image(filename, image):
-    """
-    Save an image to disk as JPEG with validation.
-    
-    Args:
-        filename (str): Name of the file (without extension)
-        image: OpenCV image (numpy array)
-        
-    Returns:
-        bool: True if save successful, False otherwise
-    """
-    try:
-        # print('Saving image...')
-        
-        # Validate input image
-        if not isinstance(image, np.ndarray):
-            print("Error: Input is not a valid numpy array")
-            return False
-            
-        if image.size == 0:
-            print("Error: Image is empty")
-            return False
-            
-        # Ensure storage directory exists
-        os.makedirs('storage', exist_ok=True)
-        
-        # Encode image to JPEG
-        success, buffer = cv2.imencode('.jpg', image)
-        if not success:
-            print("Error: Failed to encode image to JPEG")
-            return False
-            
-        image_bytes = buffer.tobytes()
-        
-        # Save to file
-        filepath = f'storage/{filename}.jpg'
-        with open(filepath, 'wb') as file:
-            file.write(image_bytes)
-            
-        # Verify the saved file
-        with open(filepath, 'rb') as file:
-            saved_data = file.read()
-            if len(saved_data) == 0:
-                print("Error: Saved file is empty")
-                return False
-        # print(f"Image saved successfully to {filepath}")
-        return True
-        
-    except Exception as e:
-        print(f"Error saving image: {e}")
-        return False
-    
+    # print('saving')
+    _, buffer = cv2.imencode('.jpg', image)
+    image_bytes = buffer.tobytes() 
+    with open(f'storage/{filename}.jpg','wb') as file:
+        file.write(image_bytes)
+    return True
 
 
 def get_space_info(max_retries=5, delay=0.5):
