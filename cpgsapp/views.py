@@ -5,14 +5,13 @@
 # Description: Fullfull the requests comming from servers or other remote devices in the network
 
 # Importing functions
-import subprocess
 import threading
 import time
 from rest_framework.response import Response
 from django.shortcuts import HttpResponse
 from cpgsapp.controllers.HardwareController import RebootSystem
 from cpgsapp.controllers.NetworkController import (
-    change_hostname, connect_to_wifi, get_network_settings, send_using_mqtt, 
+    change_hostname, connect_to_wifi, get_network_settings, 
     set_dynamic_ip, set_static_ip
 )
 from cpgsapp.serializers import AccountSerializer
@@ -177,6 +176,7 @@ class AccountHandler(APIView):
             return Response({"status":"User Do Not Exist"},status=HTTP_401_UNAUTHORIZED)
 
 
+
 # Handle Monitoring space related tasks
 class MonitorHandler(APIView):
     def post(self, req):
@@ -190,11 +190,8 @@ class MonitorHandler(APIView):
                 return Response(data={'data': len(spaces)}, status=HTTP_200_OK)
             
             if task == 'GET_MONITOR_VIEWS':
-                while True:
-                    time.sleep(2)
-                    spaces = get_monitoring_spaces()
-                    send_using_mqtt(spaces)
-                # return Response(status=HTTP_200_OK)
+                spaces = get_monitoring_spaces()
+                return Response({'data': spaces}, status=HTTP_200_OK)
         else:
             return Response({"status":"Missing Authorization Token in body"},status=HTTP_401_UNAUTHORIZED)
 

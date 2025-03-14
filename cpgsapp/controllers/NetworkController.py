@@ -6,14 +6,12 @@
 
 
 # Importing functions
-import json
 import socket
 import subprocess
 import time
 from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
-from cpgsserver.settings import BROKER_SERVER_IP, BROKER_SERVER_PORT, BROKER_TOPIC
 from storage import Variables
 
 # Function to update space status to the server
@@ -177,35 +175,3 @@ def connect_to_wifi(ssid, password):
         print(f"Error connecting to WiFi: {e}")
 
 
-def send_using_mqtt(data):
-    # Format the data as JSON
-    formatted_json = json.dumps({"data": data})
-    cmd = [
-        "mosquitto_pub",
-        "-h", BROKER_SERVER_IP,
-        "-p", BROKER_SERVER_PORT,
-        "-t", BROKER_TOPIC,
-        "-m", formatted_json
-    ]
-
-    try:
-        # Run the command and wait for completion
-        process = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        # Optionally return or print the output
-        # print("Message sent successfully")
-        return process.returncode  # Returns 0 on success
-        
-    except subprocess.CalledProcessError as e:
-        # Handle any errors from the process
-        print(f"Error sending MQTT message: {e}")
-        print(f"Error output: {e.stderr}")
-        raise  # Re-raise the exception if you want calling code to handle it
-    except FileNotFoundError:
-        # Handle case where mosquitto_pub is not installed
-        print("Error: mosquitto_pub command not found")
-        raise
