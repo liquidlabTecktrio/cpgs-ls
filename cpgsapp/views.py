@@ -27,8 +27,6 @@ from cpgsapp.controllers.FileSystemContoller import (
     change_mode_to_config, change_mode_to_live, clear_space_coordinates, 
     get_mode_info, get_space_coordinates, save_space_coordinates
 )
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 
 

@@ -127,6 +127,8 @@ def capture():
             print("Invalid frame received")
         time.sleep(0.3)  
 
+
+
 # LOAD CAMERA VIEW 
 def load_camera_view(max_attempts=5, delay=0.05):
     for attempt in range(max_attempts):
@@ -135,8 +137,8 @@ def load_camera_view(max_attempts=5, delay=0.05):
             return camera_view
         print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
         time.sleep(delay)  # Brief delay before retry
-  
     raise Exception("Failed to load camera_view.jpg after multiple attempts")
+
 
 
 # Function called for getting the camera view with space coordinates
