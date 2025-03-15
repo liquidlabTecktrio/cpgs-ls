@@ -212,8 +212,10 @@ class CalibrateHandler(APIView):
                 return Response(status=HTTP_200_OK)
             
             if task == 'GET_CAMERA_VIEW_WITH_COORDINATES':
-                camera_view_with_coordinates = get_camera_view_with_space_coordinates()
-                return Response(status=HTTP_200_OK, data={"data": camera_view_with_coordinates})
+                frame_bytes = get_camera_view_with_space_coordinates()
+                # Send raw bytes directly, bypassing JSON renderer
+                return HttpResponse(frame_bytes, content_type="image/jpeg")
+            
             
             if task == 'CLEAR_SPACE_COORDINATES':
                 clear_space_coordinates()

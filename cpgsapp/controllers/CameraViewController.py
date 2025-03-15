@@ -159,9 +159,9 @@ def get_camera_view_with_space_coordinates():
                     cv2.line(frame,(x1,y1),(x2,y2), (0, 255, 0), 2)  
     ret, buffer = cv2.imencode('.jpg', frame)
     frame_bytes = buffer.tobytes()
-    encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
-    readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
-    return readyToSendFrame
+    # encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
+    # readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
+    return frame_bytes
 
 
 #Function called to detect license plate
