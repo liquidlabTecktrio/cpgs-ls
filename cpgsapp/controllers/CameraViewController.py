@@ -126,7 +126,7 @@ def capture():
                 continue
         
         if frame.size > 0:  # Simplified check
-            frame = cv2.resize(frame, (1020, 576), interpolation=cv2.INTER_NEAREST)
+            frame = cv2.resize(frame, (1280 , 720), interpolation=cv2.INTER_NEAREST)
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
@@ -136,11 +136,16 @@ def capture():
 
 # LOAD CAMERA VIEW 
 def load_camera_view(max_attempts=5, delay=0.05):
-    for attempt in range(max_attempts):
+    # for attempt in range(max_attempts):
         camera_view = cv2.imread("storage/camera_view.jpg")
         if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
             return camera_view
-        print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
+        else:
+            height, width = 1280 , 720 # Adjust as needed
+            blank_image = np.zeros((height, width, 3), dtype=np.uint8)
+
+            return blank_image
+        # print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
         time.sleep(delay)  # Brief delay before retry
     # raise Exception("Failed to load camera_view.jpg after multiple attempts")
 
