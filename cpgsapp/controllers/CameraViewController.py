@@ -116,21 +116,21 @@ def capture():
                 print("Failed to capture frame from PiCamera")
                 time.sleep(0.5)
                 continue
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         else:
             ret, frame = Variables.cap.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             if not ret:
                 print("Failed to capture frame from VideoCapture")
                 time.sleep(0.1)
                 continue
-        
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         if frame.size > 0:  # Simplified check
-            frame = cv2.resize(frame, (1280 , 720), interpolation=cv2.INTER_NEAREST)
+            frame = cv2.resize(frame, (1280 , 720))
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
-        time.sleep(0.05)  # Reduced delay
+        time.sleep(.8)  # Reduced delay
 
 
 
@@ -141,14 +141,10 @@ def load_camera_view(max_attempts=5, delay=0.05):
         if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
             return camera_view
         else:
-            height, width = 1280 , 720 # Adjust as needed
-            blank_image = np.zeros((height, width, 3), dtype=np.uint8)
-
+            height, width = 720 , 1280 # Adjust as needed
+            blank_image = np.zeros((height, width, 1), dtype=np.uint8)
             return blank_image
-        # print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
-        time.sleep(delay)  # Brief delay before retry
-    # raise Exception("Failed to load camera_view.jpg after multiple attempts")
-
+      
 
 
 # Function called for getting the camera view with space coordinates
@@ -164,9 +160,8 @@ def get_camera_view_with_space_coordinates():
                     cv2.line(frame,(x1,y1),(x2,y2), (0, 255, 0), 2)  
     ret, buffer = cv2.imencode('.jpg', frame)
     frame_bytes = buffer.tobytes()
-    # encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
-    # readyToSendFrame = f"data:image/jpeg;base64,{encoded_frame}"
     return frame_bytes
+
 
 
 #Function called to detect license plate
@@ -207,7 +202,6 @@ def liveMode():
         }
         Variables.SPACES.append(obj)
     update_space_info(Variables.SPACES)
-
     for spaceID, pos in enumerate(poslist):
         SpaceCoordinates = np.array([[pos[0][0], pos[0][1]], [pos[1][0], pos[1][1]], [pos[2][0], pos[2][1]], [pos[3][0], pos[3][1]]])
         pts = np.array(SpaceCoordinates, np.int32)
