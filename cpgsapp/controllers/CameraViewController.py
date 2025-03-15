@@ -70,9 +70,9 @@ def dectect_license_plate(space):
     plate_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_russian_plate_number.xml')
     # Load image
     isLicensePlate = False
-    gray = cv2.cvtColor(space, cv2.COLOR_BGR2GRAY)
+    # gray = cv2.cvtColor(space, cv2.COLOR_BGR2GRAY)
     license_plate = None
-    plates = plate_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
+    plates = plate_cascade.detectMultiScale(space, scaleFactor=1.1, minNeighbors=4, minSize=(25, 25))
     for (x, y, w, h) in plates:
         isLicensePlate = True 
         cv2.rectangle(space, (x, y), (x + w, y + h), (0, 255, 0), 2)  
