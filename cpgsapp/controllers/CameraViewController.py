@@ -78,7 +78,7 @@ def dectect_license_plate(space):
         cv2.rectangle(space, (x, y), (x + w, y + h), (0, 255, 0), 2)  
         license_plate = space[y:y+h, x:x+w]
     
-    space  = cv2.cvtColor(space, cv2.COLOR_RGB2GRAY)
+    # space  = cv2.cvtColor(space, cv2.COLOR_RGB2GRAY)
     return space, license_plate, isLicensePlate
 
 
@@ -116,9 +116,10 @@ def capture():
                 print("Failed to capture frame from PiCamera")
                 time.sleep(0.5)
                 continue
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         else:
             ret, frame = Variables.cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             if not ret:
                 print("Failed to capture frame from VideoCapture")
                 time.sleep(0.1)
