@@ -85,7 +85,7 @@ def dectect_license_plate(space):
 # Function called for calibrating 
 async def video_stream_for_calibrate():
     while True:
-        frame  = await capture('run')
+        frame  = load_camera_view()
         with open('coordinates.txt','r')as data:
             for space_coordinates in json.load(data):
                     for index in range (0,len(space_coordinates)-1):
