@@ -142,7 +142,7 @@ def load_camera_view(max_attempts=5, delay=0.05):
             return camera_view
         print(f"Attempt {attempt + 1}: Failed to load image, retrying...")
         time.sleep(delay)  # Brief delay before retry
-    raise Exception("Failed to load camera_view.jpg after multiple attempts")
+    # raise Exception("Failed to load camera_view.jpg after multiple attempts")
 
 
 
