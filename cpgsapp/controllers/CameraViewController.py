@@ -127,7 +127,7 @@ def capture():
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         if frame.size > 0:  # Simplified check
             frame = cv2.resize(frame, (1280 , 720))
-            # save_image('camera_view', frame)
+            save_image('camera_view', frame)
         else:
             print("Invalid frame received")
         time.sleep(.8)  # Reduced delay
