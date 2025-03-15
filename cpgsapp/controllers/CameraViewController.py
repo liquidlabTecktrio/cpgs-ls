@@ -126,7 +126,7 @@ def capture():
                 continue
         
         if frame.size > 0:  # Simplified check
-            # frame = cv2.resize(frame, (1020, 576), interpolation=cv2.INTER_NEAREST)
+            frame = cv2.resize(frame, (1020, 576), interpolation=cv2.INTER_NEAREST)
             save_image('camera_view', frame)
         else:
             print("Invalid frame received")
