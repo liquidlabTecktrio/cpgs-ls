@@ -20,48 +20,13 @@ def save_image(filename, image):
         file.write(image_bytes)
     return True
 
-
-def get_space_info(max_retries=5, delay=0.5):
-    attempt = 0
-    
-    while attempt < max_retries:
-        try:
-            with open("storage/spaceInfo.json", "r") as spaces:
-                # Read content first to avoid partial read issues
-                content = spaces.read().strip()
-                if not content:
-                    print("Warning: JSON file is empty")
-                    return {}
-                
-                # Try to parse the JSON
-                SPACES = json.loads(content)
-                if not SPACES:
-                    print("Warning: File contains empty JSON structure")
-                    return {}
-                return SPACES
-                
-        except json.JSONDecodeError as e:
-            print(f"Attempt {attempt + 1}/{max_retries} - JSON error: {e}")
-            attempt += 1
-            if attempt == max_retries:
-                print("Max retries reached, returning empty dict")
-                return {}
-            time.sleep(delay)  # Wait before next attempt
-            
-        except FileNotFoundError:
-            print("File not found: storage/spaceInfo.json")
-            return {}  # No point in retrying if file doesn't exist
-            
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            attempt += 1
-            if attempt == max_retries:
-                print("Max retries reached due to unexpected errors")
-                return {}
-            time.sleep(delay)
-
-            
-    
+def get_space_info():
+    try:
+        with open("storage/spaceInfo.json", "r") as f:
+            return json.loads(f.read().strip()) or {}
+    except (json.JSONDecodeError, FileNotFoundError):
+        print("Error reading JSON, using empty data.")
+        return {}
 
 def update_space_info(new_data):
     try:
