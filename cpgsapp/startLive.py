@@ -10,19 +10,32 @@ import time
 import requests
 
 # from controllers.HardwareController import free_camera_device
+import socket
+import time
+import requests
 
-"""Wait until the server is listening on the specified port."""
+SERVER_IP = "0.0.0.0"  # Replace with your actual public IP
+PORT = 8000
+
+print("Initiate Program V1")
+
 while True:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1)
-            s.connect(("0.0.0.0", 8000))
-            print(f"Server is up on 0.0.0.0:8000")
-            requests.get(f'http://0.0.0.0:8000/initiate')
-            break
+            s.connect((SERVER_IP, PORT))
+            print(f"Server is up on {SERVER_IP}:{PORT}")
+
+        # Send request after confirming server is up
+        try:
+            response = requests.get(f"http://{SERVER_IP}:{PORT}/initiate", timeout=2)
+            print(f"Initiation Response: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Request failed: {e}")
+
+        break  # Exit loop once successful
+
     except (ConnectionRefusedError, socket.timeout):
-        print(f"Waiting for server on 0.0.0.0:8000...")
-        time.sleep(1)  # Check every second
-
-
+        print(f"Waiting for server on {SERVER_IP}:{PORT}...")
+        time.sleep(1)  # Retry every second
 
