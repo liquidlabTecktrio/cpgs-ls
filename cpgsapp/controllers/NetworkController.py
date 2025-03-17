@@ -9,6 +9,8 @@
 import socket
 import subprocess
 import time
+
+from requests import request
 from cpgsapp.controllers.FileSystemContoller import get_space_info
 from cpgsapp.models import NetworkSettings
 from cpgsapp.serializers import NetworkSettingsSerializer
@@ -30,7 +32,7 @@ def update_server():
                     break
         if changed_space is not None:
             sd = current_spaces[changed_space]
-            print("Changes found in space index", changed_space)
+            # print("Changes found in space index", changed_space)
             data_to_send = {
                 "spaceID": sd['spaceID'],
                 "spaceStatus": sd['spaceStatus'],
@@ -38,9 +40,10 @@ def update_server():
             }
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_client:
                 udp_client.sendto(str(data_to_send).encode(), (NetworkSetting.server_ip, NetworkSetting.server_port))
-        print("Updating MS with IP ",NetworkSetting.server_ip," with ",NetworkSetting.server_port)
+        # print("Updating MS with IP ",NetworkSetting.server_ip," with ",NetworkSetting.server_port)
 
-
+def get_OCR():
+    number  = request.post("http")
 
 def change_hostname(new_hostname):
     try:
@@ -54,7 +57,7 @@ def change_hostname(new_hostname):
             print(f"Command: {cmd}")
             print(f"Output: {result.stdout}")
             print(f"Error (if any): {result.stderr}")
-        print(f"Hostname successfully changed to {new_hostname}")
+        # print(f"Hostname successfully changed to {new_hostname}")
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error changing hostname: {e}")
@@ -156,7 +159,7 @@ def connect_to_wifi(ssid, password):
     if not available_ssids:
         print("No WiFi networks found or scanning failed.")
         return 401
-    print(f"Available networks: {', '.join(available_ssids)}")
+    # print(f"Available networks: {', '.join(available_ssids)}")
     if ssid not in available_ssids:
         print(f"Error: Network '{ssid}' not found in scan results.")
         return 401
@@ -164,7 +167,7 @@ def connect_to_wifi(ssid, password):
        # Step 1: Connect to the WiFi network
         connect_cmd = f'sudo nmcli dev wifi connect "{ssid}" password "{password}"'
         result = subprocess.run(connect_cmd, shell=True, check=True, text=True, capture_output=True)
-        print(f"Connected to WiFi: {ssid}")
+        print(f"Ready to Connect with WiFi: {ssid}")
         
         # Step 3: Modify the connection to enable autoconnect using the UUID
         modify_cmd = f'sudo nmcli connection modify "preconfigured" connection.autoconnect yes'

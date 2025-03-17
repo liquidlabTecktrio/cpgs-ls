@@ -44,7 +44,7 @@ def ValidateUser(req):
 
 # Function to monitor mode continuously
 def ModeMonitor():
-    print("Starting Monitoring Mode")
+    # print("Starting Monitoring Mode")
     while True:
         time.sleep(1)
         mode = get_mode_info()
@@ -54,7 +54,7 @@ def ModeMonitor():
 
 # Function to initiate tasks
 def initiate(req):
-    print('Initiating CPGS')
+    # print('Initiating CPGS')
     # free_camera_device()
     threading.Thread(target=capture).start()  # Start the camera capture thread
     threading.Thread(target=ModeMonitor).start()  # Start the mode monitor thread
