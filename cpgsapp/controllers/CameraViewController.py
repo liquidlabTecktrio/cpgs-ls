@@ -108,30 +108,30 @@ import time
 
 def capture():
     """Synchronous capture function optimized for performance."""
-    print('Camera Started!')
-    while True:
-        if IS_PI_CAMERA_SOURCE:
-            frame = Variables.cap.capture_array()
-            if frame is None:
-                print("Failed to capture frame from PiCamera")
-                time.sleep(0.5)
-                continue
-        else:
-            ret, frame = Variables.cap.read()
-            # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            if not ret:
-                print("Failed to capture frame from VideoCapture")
-                time.sleep(0.1)
-                continue
+    # print('Camera Started!')
+    # while True:
+    if IS_PI_CAMERA_SOURCE:
+        frame = Variables.cap.capture_array()
+        if frame is None:
+            print("Failed to capture frame from PiCamera")
+            time.sleep(0.5)
+            # continue
+    else:
+        ret, frame = Variables.cap.read()
+        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        if not ret:
+            print("Failed to capture frame from VideoCapture")
+            time.sleep(0.1)
+            # continue
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        if frame.size > 0:  # Simplified check
-            frame = cv2.resize(frame, (1280 , 720))
-            return frame
-            # save_image('camera_view', frame)
-        else:
-            print("Invalid frame received")
-        time.sleep(.8)  # Reduced delay
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    if frame.size > 0:  # Simplified check
+        frame = cv2.resize(frame, (1280 , 720))
+        return frame
+        # save_image('camera_view', frame)
+    else:
+        print("Invalid frame received")
+    time.sleep(.8)  # Reduced delay
 
 
 
