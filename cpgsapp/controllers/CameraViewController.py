@@ -127,7 +127,8 @@ def capture():
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         if frame.size > 0:  # Simplified check
             frame = cv2.resize(frame, (1280 , 720))
-            save_image('camera_view', frame)
+            return frame
+            # save_image('camera_view', frame)
         else:
             print("Invalid frame received")
         time.sleep(.8)  # Reduced delay
@@ -138,7 +139,8 @@ def capture():
 def load_camera_view(max_attempts=5, delay=0.05):
     # for attempt in range(max_attempts):
         # print('getting image')
-        camera_view = cv2.imread("storage/camera_view.jpg")
+        camera_view = capture()
+        # camera_view = cv2.imread("storage/camera_view.jpg")
         if camera_view is not None and not camera_view.size == 0:  # Check if image is valid
             return camera_view
         else:
